@@ -5,7 +5,7 @@ from db.gpt_api import generate_word_info
 import sqlite3
 
 BOOKS_DIR = r"D:\Canada research\frontend\assets\books"
-DB_PATH = r"D:\Canada research\thesis\db\book.db"
+DB_PATH = r"D:\Canada research\backend\db\book.db"
 
 def get_word_file():
     files = [f for f in os.listdir(BOOKS_DIR) if f.lower().endswith('.docx')]
@@ -69,7 +69,7 @@ def add_result_text_record(read_part, results_analysis):
     - results_analysis: the analysis result (as string)
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\results.db"
+    DB_PATH = r"D:\Canada research\backend\db\results.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -84,7 +84,7 @@ def find_fragment_by_text(search_text):
     Searches for a fragment in the book_fragments table by the exact 'text' column value.
     Returns the fragment_id (index) if found, else None.
     """
-    DB_PATH = r"D:\Canada research\thesis\db\book.db"
+    DB_PATH = r"D:\Canada research\backend\db\book.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT fragment_id FROM book_fragments WHERE text = ?", (search_text,))
@@ -102,7 +102,7 @@ def update_fragment_by_id(fragment_id, new_text=None, new_chapter_name=None):
     Returns True if update was successful (row existed), False otherwise.
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\book.db"
+    DB_PATH = r"D:\Canada research\backend\db\book.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     fields = []
@@ -131,7 +131,7 @@ def find_text_record_by_read_part(read_part):
     Returns the text_index if found, else None.
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\results.db"
+    DB_PATH = r"D:\Canada research\backend\db\results.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT text_index FROM text WHERE read_part = ?", (read_part,))
@@ -148,7 +148,7 @@ def update_text_record_by_read_part(read_part, new_results_analysis):
     Returns True if update was successful, False otherwise.
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\results.db"
+    DB_PATH = r"D:\Canada research\backend\db\results.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
@@ -162,15 +162,15 @@ def update_text_record_by_read_part(read_part, new_results_analysis):
 
 def fill_existing_words(word):
     """
-    Uses GPT to generate antonyms, synonyms, examples, transcription, and syllables for the given word,
+    Uses GPT to generate meaning, antonyms, synonyms, examples, transcription, and syllables for the given word,
     and inserts a new record into the existing_words table in book.db.
     """
-    DB_PATH = r"D:\Canada research\thesis\db\book.db"
+    DB_PATH = r"D:\Canada research\backend\db\book.db"
     info = generate_word_info(word)
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     cur.execute(
-        "INSERT INTO existing_words (word, antonyms, synonyms, examples, transcription, syllables) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO existing_words (word, meaning, antonyms, synonyms, examples, transcription, syllables) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             word,
             info.get("antonyms", ""),
@@ -193,7 +193,7 @@ def word_exists_in_existing_words(word):
     if not word:
         return -1
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\book.db"
+    DB_PATH = r"D:\Canada research\backend\db\book.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     # Check if the table is empty
@@ -217,7 +217,7 @@ def add_mistake(word, word_id):
     Before inserting, checks if the mistakes table is not empty.
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\results.db"
+    DB_PATH = r"D:\Canada research\backend\db\results.db"
     conn = sqlite3.connect(DB_PATH)
     cur = conn.cursor()
     # Check if the mistakes table is not empty
@@ -239,7 +239,7 @@ def get_fragment_by_id(fragment_id):
     Returns a dictionary with column names as keys, or None if not found.
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\thesis\db\book.db"
+    DB_PATH = "db/book.db"
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
