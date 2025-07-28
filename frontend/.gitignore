@@ -1,66 +1,98 @@
-# OSX
-#
-.DS_Store
+# Virtual environments
+venv/
+venv_li/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env
 
-# Xcode
-#
+# Audio files
+audio/
+
+# Backend specific ignores
+backend/.idea/
+backend/.venv/
+backend/__pycache__/
+backend/cl/
+backend/db/
+backend/node_modules/
+backend/package-lock.json
+backend/package.json
+
+# Backend model files
+backend/model_decision_tree.pickle
+backend/model_gradient_boosting.pickle
+backend/model_linear_regression.pickle
+backend/model_random_forest.pickle
+backend/model_svr.pickle
+
+# Python ignores
+*.py[cod]
+__pycache__/
+*.so
+.Python
 build/
-*.pbxuser
-!default.pbxuser
-*.mode1v3
-!default.mode1v3
-*.mode2v3
-!default.mode2v3
-*.perspectivev3
-!default.perspectivev3
-xcuserdata
-*.xccheckout
-*.moved-aside
-DerivedData
-*.hmap
-*.ipa
-*.xcuserstate
-ios/.xcode.env.local
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pickle
+MANIFEST
 
-# Android/IntelliJ
-#
-build/
-.idea
-.gradle
-local.properties
-*.iml
-*.hprof
-.cxx/
-*.keystore
-!debug.keystore
-
-# node.js
-#
+# Node/NPM ignores
 node_modules/
-npm-debug.log
-yarn-error.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# fastlane
-#
-# It is recommended to not store the screenshots in the git repo. Instead, use fastlane to re-generate the
-# screenshots whenever they are needed.
-# For more information about the recommended setup visit:
-# https://docs.fastlane.tools/best-practices/source-control/
+# IDE specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-**/fastlane/report.xml
-**/fastlane/Preview.html
-**/fastlane/screenshots
-**/fastlane/test_output
+# System files
+.DS_Store
+Thumbs.db
 
-# Bundle artifact
-*.jsbundle
+# Бази даних та бінарні файли
+backend/db/book.db
+backend/db/results.db
+backend/data/*.rda
+backend/output.txt
 
-# Ruby / CocoaPods
-/ios/Pods/
-/vendor/bundle/
+# Бази даних та бінарні файли
+backend/db/book.db
+backend/db/results.db
+backend/word_information.db
+backend/data/*.rda
+backend/output.txt
 
-# Temporary files created by Metro to check the health of the file watcher
-.metro-health-check*
+# Файли залежностей (якщо це Python проєкт)
+backend/package-lock.json
+backend/package.json
 
-# testing
-/coverage
+# Тимчасові/генеровані файли
+backend/cl
+backend/data/*.csv  # (якщо ці CSV генеруються автоматично)
+
+# Візуалізації/результати аналізу
+backend/visualizations
+
+# Експериментальний код
+backend/Extra Code/

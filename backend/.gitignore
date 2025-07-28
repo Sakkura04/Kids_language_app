@@ -1,3 +1,74 @@
-venv
-audio
-venv_li
+# Virtual environments
+venv/
+venv_li/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# Audio files
+audio/
+
+# Backend specific ignores
+backend/.idea/
+backend/.venv/
+backend/__pycache__/
+backend/cl/
+backend/db/
+backend/node_modules/
+backend/package-lock.json
+backend/package.json
+
+# Backend model files
+backend/model_decision_tree.pickle
+backend/model_gradient_boosting.pickle
+backend/model_linear_regression.pickle
+backend/model_random_forest.pickle
+backend/model_svr.pickle
+
+# Python ignores
+*.py[cod]
+__pycache__/
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+*.pickle
+MANIFEST
+
+# Node/NPM ignores
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE specific files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Ігнорувати output файли
+backend/output.txt
