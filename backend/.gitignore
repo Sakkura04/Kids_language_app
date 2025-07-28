@@ -12,21 +12,21 @@ venv.bak/
 audio/
 
 # Backend specific ignores
-backend/.idea/
-backend/.venv/
-backend/__pycache__/
+.idea/
+.venv/
+__pycache__/
 backend/cl/
-backend/db/
-backend/node_modules/
-backend/package-lock.json
-backend/package.json
+node_modules/
+package-lock.json
+package.json
+db/*.db
 
 # Backend model files
-backend/model_decision_tree.pickle
-backend/model_gradient_boosting.pickle
-backend/model_linear_regression.pickle
-backend/model_random_forest.pickle
-backend/model_svr.pickle
+model_decision_tree.pickle
+model_gradient_boosting.pickle
+model_linear_regression.pickle
+model_random_forest.pickle
+model_svr.pickle
 
 # Python ignores
 *.py[cod]
@@ -48,7 +48,7 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-*.pickle
+*.pickle  
 MANIFEST
 
 # Node/NPM ignores
@@ -71,4 +71,10 @@ yarn-error.log*
 Thumbs.db
 
 # Ігнорувати output файли
-backend/output.txt
+output.txt
+# Android Gradle files
+../frontend/android/.gradle/
+../frontend/android/build/
+../frontend/android/app/build/
+../frontend/android/gradle/
+../frontend/android/local.properties
