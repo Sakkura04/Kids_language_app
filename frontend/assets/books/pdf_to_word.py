@@ -3,10 +3,6 @@ from docx import Document
 import os
 import re
 
-# Define file paths
-pdf_path = os.path.join(os.path.dirname(__file__), '79 The Ugly Duckling.pdf')
-docx_path = os.path.join(os.path.dirname(__file__), '79 The Ugly Duckling.docx')
-
 def clean_line(line):
     return ''.join(c for c in line if c >= ' ' or c in '\t\n\r')
 
@@ -92,6 +88,22 @@ def pdf_to_word(pdf_path, docx_path, num_columns=2, start_page=0, end_page=None)
         print(f"ALARM: Could not save the Word document. Please CLOSE '{os.path.basename(docx_path)}' if it is open, then run the program again.")
 
 if __name__ == "__main__":
+    # List all PDF files in the current directory
+    current_dir = os.path.dirname(__file__)
+    pdf_files = [f for f in os.listdir(current_dir) if f.lower().endswith('.pdf')]
+    if not pdf_files:
+        print("No PDF files found in the current directory.")
+        exit(1)
+    print("Available PDF files:")
+    for f in pdf_files:
+        print(f"- {f}")
+    pdf_name = input("Enter the exact PDF file name to parse (with .pdf extension): ").strip()
+    while pdf_name not in pdf_files:
+        print("File not found. Please enter a valid file name from the list above.")
+        pdf_name = input("Enter the exact PDF file name to parse (with .pdf extension): ").strip()
+    pdf_path = os.path.join(current_dir, pdf_name)
+    docx_name = os.path.splitext(pdf_name)[0] + '.docx'
+    docx_path = os.path.join(current_dir, docx_name)
     try:
         num_columns = int(input("How many columns does the text have per page? (default 2): ") or 2)
         start_page = int(input("From which page number should parsing begin? (0-based, default 0): ") or 0)
