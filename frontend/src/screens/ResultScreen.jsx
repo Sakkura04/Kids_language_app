@@ -43,58 +43,55 @@ const ResultsScreen = ({ route }) => {
       />
       <ScrollView contentContainerStyle={styles.container}>
         {animate && (
-          <>
-            <Animatable.View animation="fadeInUp" style={styles.header}>
-              <Text style={styles.headerText}>Analysis Results</Text>
-            </Animatable.View>
-
-            <Animatable.View animation="fadeInUp" delay={100} style={styles.cardContainer}>
-              <Card style={styles.card}>
-                <Card.Content>
-                  <Title style={styles.title}>Transcription</Title>
-                  <Text style={styles.contentText}>{responseData?.transcription}</Text>
-                </Card.Content>
-              </Card>
-            </Animatable.View>
-
-            <Animatable.View animation="fadeInUp" delay={200} style={styles.cardContainer}>
-              <Card style={styles.card}>
-                <Card.Content>
-                  <Title style={styles.title}>Readability Metrics</Title>
-                  {Object.entries(responseData?.readability_metrics).map(([sentence, metrics]) => (
-                    <View key={sentence} style={styles.metricContainer}>
-                      <Text style={styles.sentence}>{sentence}</Text>
-                      {Object.entries(metrics).map(([metric, value]) => (
-                        <Text key={metric} style={styles.contentText}>{`${metric}: ${value}`}</Text>
-                      ))}
-                    </View>
-                  ))}
-                </Card.Content>
-              </Card>
-            </Animatable.View>
-
-            <Animatable.View animation="fadeInUp" delay={300} style={styles.cardContainer}>
-              <Card style={styles.card}>
-                <Card.Content>
-                  <Title style={styles.title}>Word Complexities</Title>
-                  {Object.entries(responseData?.word_complexities).map(([word, complexity]) => (
-                    <Text key={word} style={styles.contentText}>{`${word}: ${complexity}`}</Text>
-                  ))}
-                </Card.Content>
-              </Card>
-            </Animatable.View>
-
-            <Animatable.View animation="fadeInUp" delay={400} style={styles.cardContainer}>
-              <Card style={styles.card}>
-                <Card.Content>
-                  <Title style={styles.title}>Additional Information</Title>
-                  <Text style={styles.contentText}>Levenshtein Distance: {responseData?.levenshtein_distance}</Text>
-                  <Text style={styles.contentText}>Missed Keywords: {responseData?.missed_keywords.join(", ")}</Text>
-                  <Text style={styles.contentText}>New Keywords: {responseData?.new_keywords.join(", ")}</Text>
-                </Card.Content>
-              </Card>
-            </Animatable.View>
-          </>
+          <View style={styles.grid}>
+            <View style={styles.row}>
+              <Animatable.View animation="fadeInUp" delay={100} style={styles.squareContainer}>
+                <Card style={styles.squareCard}>
+                  <Card.Content>
+                    <Title style={styles.title}>Transcription</Title>
+                    <Text style={styles.contentText}>{responseData?.transcription}</Text>
+                  </Card.Content>
+                </Card>
+              </Animatable.View>
+              <Animatable.View animation="fadeInUp" delay={200} style={styles.squareContainer}>
+                <Card style={styles.squareCard}>
+                  <Card.Content>
+                    <Title style={styles.title}>Readability Metrics</Title>
+                    {Object.entries(responseData?.readability_metrics).map(([sentence, metrics]) => (
+                      <View key={sentence} style={styles.metricContainer}>
+                        <Text style={styles.sentence}>{sentence}</Text>
+                        {Object.entries(metrics).map(([metric, value]) => (
+                          <Text key={metric} style={styles.contentText}>{`${metric}: ${value}`}</Text>
+                        ))}
+                      </View>
+                    ))}
+                  </Card.Content>
+                </Card>
+              </Animatable.View>
+            </View>
+            <View style={styles.row}>
+              <Animatable.View animation="fadeInUp" delay={300} style={styles.squareContainer}>
+                <Card style={styles.squareCard}>
+                  <Card.Content>
+                    <Title style={styles.title}>Word Complexities</Title>
+                    {Object.entries(responseData?.word_complexities).map(([word, complexity]) => (
+                      <Text key={word} style={styles.contentText}>{`${word}: ${complexity}`}</Text>
+                    ))}
+                  </Card.Content>
+                </Card>
+              </Animatable.View>
+              <Animatable.View animation="fadeInUp" delay={400} style={styles.squareContainer}>
+                <Card style={styles.squareCard}>
+                  <Card.Content>
+                    <Title style={styles.title}>Additional Information</Title>
+                    <Text style={styles.contentText}>Levenshtein Distance: {responseData?.levenshtein_distance}</Text>
+                    <Text style={styles.contentText}>Missed Keywords: {responseData?.missed_keywords.join(", ")}</Text>
+                    <Text style={styles.contentText}>New Keywords: {responseData?.new_keywords.join(", ")}</Text>
+                  </Card.Content>
+                </Card>
+              </Animatable.View>
+            </View>
+          </View>
         )}
       </ScrollView>
     </View>
@@ -132,22 +129,46 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   cardContainer: {
-    width: '100%',
-    marginBottom: 20,
+    // unused now
   },
-  card: {
-    backgroundColor: '#ffffff',
+  grid: {
+    width: '100%',
+    maxHeight: '50%',
+    flexDirection: 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '60%',
+    gap: 30,
+  },
+  squareContainer: {
+    flex: 1,
+    aspectRatio: 1,
+    width: '35%',
+    maxHeight: '80%',
+    marginHorizontal: 4,
+  },
+  squareCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.9)', // half transparent
     borderRadius: 20,
-    padding: 15,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.23,
-    shadowRadius: 2.62,
+    elevation: 0, // remove shadow (Android)
+    shadowColor: 'transparent', // remove shadow (iOS)
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 10,
   },
   title: {
     fontSize: 22,
-    color: '#3143e8',
+    color: '#48b2d0',
     fontWeight: 'bold',
     marginBottom: 10,
   },
