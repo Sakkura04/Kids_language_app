@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-db_dir = r"D:\Canada research\thesis\db"
+db_dir = os.path.dirname(os.path.abspath(__file__))
 
 # --- Create book.db ---
 book_db_path = os.path.join(db_dir, "book.db")
@@ -12,6 +12,7 @@ cur_book.execute("""
 CREATE TABLE IF NOT EXISTS existing_words (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     word TEXT,
+    meaning TEXT,
     antonyms TEXT,
     synonyms TEXT,
     examples TEXT,
@@ -65,5 +66,17 @@ CREATE TABLE IF NOT EXISTS mistakes (
 
 conn_results.commit()
 conn_results.close()
+
+def get_books_count():
+    """
+    Returns the amount of recordings (rows) in the books table of book.db
+    """
+    book_db_path = os.path.join(db_dir, "book.db")
+    conn = sqlite3.connect(book_db_path)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM books")
+    count = cur.fetchone()[0]
+    conn.close()
+    return count
 
 print("Databases and tables created successfully.")
