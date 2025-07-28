@@ -3,6 +3,7 @@ import os
 import sqlite3
 from docx import Document
 import sqlite3
+from create_databases import get_books_count
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 BOOKS_DIR = os.path.join(BASE_DIR, '..', '..', 'frontend', 'assets', 'books')
@@ -93,9 +94,14 @@ def add_all_books_to_db():
 
 
 if __name__ == "__main__":
-    answer = input("Do you want to add all new books to the db? (yes/no): ").strip().lower()
-    if answer in ("yes", "y"): 
-        add_all_books_to_db()
+    # Check if there are more PDF files than recordings in the books table
+    pdf_files = [f for f in os.listdir(BOOKS_DIR) if f.lower().endswith('.pdf')]
+    books_in_db = get_books_count()
+    
+    if len(pdf_files) > books_in_db:
+        answer = input("Do you want to add all new books to the db? (yes/no): ").strip().lower()
+        if answer in ("yes", "y"): 
+            add_all_books_to_db()
 
     # Автоматично завантажити речення з Word-файлу у БД
     add_fragments_to_db()
