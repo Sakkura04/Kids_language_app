@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, PermissionsAndroid, Platform, Alert, Linking, StyleSheet } from 'react-native';
+import { View, PermissionsAndroid, Platform, Alert, Linking, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { Button } from 'react-native-paper';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import RNFS from 'react-native-fs';
@@ -7,6 +7,7 @@ import RNFS from 'react-native-fs';
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
 const AudioRecorderComponent = ({ currentText, navigation }) => {
+  console.log("AudioRecorderComponent called");
   const [isRecording, setIsRecording] = useState(false);
   const [recordPath, setRecordPath] = useState('');
   const [isReviewMode, setIsReviewMode] = useState(false);
@@ -50,10 +51,12 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   const openSettings = () => {
+    console.log("openSettings called");
     Linking.openSettings();
   };
 
   const onStartRecord = async () => {
+    console.log("onStartRecord called");
     const permissionsGranted = await requestPermissions();
     if (!permissionsGranted) return;
 
@@ -66,6 +69,7 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   const onStopRecord = async () => {
+    console.log("onStopRecord called");
     const result = await audioRecorderPlayer.stopRecorder();
     audioRecorderPlayer.removeRecordBackListener();
     setIsRecording(false);
@@ -73,6 +77,7 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   const onPlayRecordedAudio = async () => {
+    console.log("onPlayRecordedAudio called");
     try {
       await audioRecorderPlayer.stopPlayer();
       const msg = await audioRecorderPlayer.startPlayer(recordPath);
@@ -87,6 +92,7 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   const onSendRecording = async () => {
+    console.log("onSendRecording called");
     try {
       const exists = await RNFS.exists(recordPath);
       if (!exists) {
@@ -98,10 +104,10 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
 
       let dataToSend = {
         audio: audioBase64,
-        original_text: currentText,
+        displayed_text: currentText,
       };
 
-      fetch('http://192.168.91.206:5000/process-audio-text', {
+      fetch('http://134.190.225.163:5000/process-recorded-text', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,6 +134,7 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   const onDiscardRecording = async () => {
+    console.log("onDiscardRecording called");
     try {
       const exists = await RNFS.exists(recordPath);
       if (exists) {
@@ -140,59 +147,39 @@ const AudioRecorderComponent = ({ currentText, navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.buttonRow}>
+      {/* Start/Stop button */}
       {!isRecording && !isReviewMode && (
-        <Button
-          icon="microphone"
-          mode="contained"
-          onPress={onStartRecord}
-          style={styles.startButton}
-          labelStyle={{ fontSize: 18 }}
-        >
-          Start Recording
-        </Button>
+        <TouchableOpacity style={[styles.actionButton, styles.startButton]} onPress={onStartRecord}>
+          <Text style={styles.actionButtonText}>START</Text>
+        </TouchableOpacity>
       )}
       {isRecording && (
-        <Button
-          icon="stop"
-          mode="contained"
-          onPress={onStopRecord}
-          style={styles.stopButton}
-          labelStyle={{ fontSize: 18 }}
-        >
-          Stop Recording
-        </Button>
+        <TouchableOpacity style={[styles.actionButton, styles.stopButton]} onPress={onStopRecord}>
+          <Text style={styles.stopButtonText}>STOP</Text>
+        </TouchableOpacity>
       )}
-      {isReviewMode && (
-        <>
-          <Button
-            icon="play"
-            mode="contained"
+      {/* Play button */}
+      <TouchableOpacity
+        style={[styles.actionButton, styles.playButton, (!isReviewMode || isRecording) && { opacity: 0.5 }]}
             onPress={onPlayRecordedAudio}
-            style={styles.playButton}
-            labelStyle={{ fontSize: 18 }}
-          >
-            Replay Recording
-          </Button>
-          <Button
-            icon="send"
-            mode="contained"
+        disabled={!isReviewMode || isRecording}
+      >
+        <Text style={styles.actionButtonText}>PLAY</Text>
+      </TouchableOpacity>
+      {/* Send button */}
+      <TouchableOpacity
+        style={[styles.actionButton, styles.sendButton, (!isReviewMode || isRecording) && { opacity: 0.5 }]}
             onPress={onSendRecording}
-            style={styles.sendButton}
-            labelStyle={{ fontSize: 18 }}
-          >
-            Send
-          </Button>
-          <Button
-            icon="delete"
-            mode="contained"
-            onPress={onDiscardRecording}
-            style={styles.discardButton}
-            labelStyle={{ fontSize: 18 }}
-          >
-            Discard Recording
-          </Button>
-        </>
+        disabled={!isReviewMode || isRecording}
+      >
+        <Text style={styles.actionButtonText}>SEND</Text>
+      </TouchableOpacity>
+      {/* Discard button (only after recording is finished) */}
+      {isReviewMode && !isRecording && (
+        <TouchableOpacity style={[styles.actionButton, styles.discardButton]} onPress={onDiscardRecording}>
+          <Text style={styles.actionButtonText}>DISCARD</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -202,30 +189,49 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
   },
-  startButton: {
-    backgroundColor: '#32CD32',
-    margin: 10,
-    width: 200,
+  buttonRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
   },
-  stopButton: {
-    backgroundColor: '#FF0000',
-    margin: 10,
-    width: 200,
+  actionButton: {
+    flexBasis: '25%',
+    height: '47%',
+    borderRadius: 25,
+    marginHorizontal: '2%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  startButton: {
+    backgroundColor: '#32B6E6',
   },
   playButton: {
-    backgroundColor: '#1E90FF',
-    margin: 10,
-    width: 200,
+    backgroundColor: '#32B6E6',
   },
   sendButton: {
-    backgroundColor: '#FFA500',
-    margin: 10,
-    width: 200,
+    backgroundColor: '#bcd175',
   },
   discardButton: {
-    backgroundColor: '#808080',
-    margin: 10,
-    width: 200,
+    backgroundColor: '#f68677',
+  },
+  stopButton: {
+    backgroundColor: '#8decef',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 18,
+    fontFamily: 'PermanentMarker',
+    letterSpacing: 1,
+  },
+  stopButtonText: {
+    color: '#32B6E6',
+    fontWeight: 'bold',
+    fontSize: 18,
+    fontFamily: 'PermanentMarker',
+    letterSpacing: 1,
   },
 });
 
