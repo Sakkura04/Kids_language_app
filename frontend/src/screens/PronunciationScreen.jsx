@@ -1,17 +1,71 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, TouchableOpacity, ImageBackground, Image } from 'react-native';
 import CustomAudioRecorder from '../components/CustomAudioRecorder.jsx';
 import PronunciationFeedbackModal from '../components/PronunciationFeedbackModal.jsx';
 import config from '../config';
 import { Button } from 'react-native-paper';
 
-const PronunciationScreen = () => {
+const { height } = Dimensions.get('window');
+const MENU_CLOSED_Y = 45;
+const MENU_HEIGHT = height * 0.51;
+const MENU_ITEMS = [
+  { label: 'Home', screen: 'Home' },
+  { label: 'Results', screen: 'Results' },
+  { label: 'Record', screen: 'Record' },
+  { label: 'Vocabulary', screen: 'Vocabulary' },
+  { label: 'Pronunciation', screen: 'Pronunciation' },
+];
+
+const PronunciationScreen = ({ navigation }) => {
     const [words, setWords] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [feedbackData, setFeedbackData] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [segments, setSegments] = useState([]);
+
+    // Pull-up menu state
+    const [menuOpen, setMenuOpen] = useState(false);
+    const translateY = useRef(new Animated.Value(MENU_HEIGHT - MENU_CLOSED_Y)).current;
+    const bgColor = translateY.interpolate({
+      inputRange: [0, MENU_HEIGHT - MENU_CLOSED_Y],
+      outputRange: ['#3686B7', '#fff'],
+    });
+    const openMenu = () => {
+      setMenuOpen(true);
+      Animated.timing(translateY, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: false,
+      }).start();
+    };
+    const closeMenu = () => {
+      Animated.timing(translateY, {
+        toValue: MENU_HEIGHT - MENU_CLOSED_Y,
+        duration: 350,
+        useNativeDriver: false,
+      }).start(() => setMenuOpen(false));
+    };
+    const panResponder = useRef(
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return Math.abs(gestureState.dy) > 10;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dy > 0) {
+            const newY = Math.min(gestureState.dy, MENU_HEIGHT - MENU_CLOSED_Y);
+            translateY.setValue(newY);
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dy > 60) {
+            closeMenu();
+          } else {
+            openMenu();
+          }
+        },
+      })
+    ).current;
 
     useEffect(() => {
         fetchPronunciationWords();
@@ -91,86 +145,282 @@ const PronunciationScreen = () => {
     }
 
     const currentWord = words[currentIndex]?.word;
+    const syllables = segments.length > 0 ? segments.join(' - ') : '';
+    const ipa = words[currentIndex]?.ipa || '/ipa/'; // Placeholder, update if available
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Pronunciation Practice</Text>
-            <View style={styles.wordContainer}>
-                <Text style={styles.wordText}>{currentWord}</Text>
-                {/* Display the breakdown of the word */}
-                <View style={styles.breakdownContainer}>
-                    {segments.map((segment, index) => (
-                        <Text key={index} style={styles.segmentText}>
-                            {segment}
-                            {index < segments.length - 1 && <Text>-</Text>}
-                        </Text>
-                    ))}
+        <ImageBackground
+            source={require('../../assets/images/sky.jpeg')}
+            style={styles.background}
+            resizeMode="cover"
+        >
+            {/* Birds and speech bubbles placeholder */}
+            <View style={styles.birdsRow}>
+                {/* Replace with actual images if available */}
+                <Image source={require('../../assets/images/pronunce_blue_bird.png')} style={styles.bird} />
+                <Image source={require('../../assets/images/pronunce_red_bird.png')} style={styles.bird} />
+            </View>
+            {/* Main white frame */}
+            <View style={styles.frame}>
+                {/* WORD row */}
+                <View style={styles.infoLine}>
+                    <View style={styles.infoLabelPill}><Text style={styles.infoLabelText}>WORD</Text></View>
+                    <Text style={styles.infoLineText}>{currentWord}</Text>
+                </View>
+                {/* SYLLABLES row */}
+                <View style={styles.infoLine}>
+                    <View style={styles.infoLabelPill}><Text style={styles.infoLabelText}>SYLLABLES</Text></View>
+                    <Text style={styles.infoLineText}>{syllables}</Text>
+                </View>
+                {/* PRONOUNCE row */}
+                <View style={styles.infoLine}>
+                    <View style={styles.infoLabelPill}><Text style={styles.infoLabelText}>PRONOUNCE</Text></View>
+                    <Text style={styles.infoLineText}>{ipa}</Text>
+                </View>
+                {/* Buttons row */}
+                <View style={styles.buttonRow}>
+                    <TouchableOpacity style={[styles.actionButton, styles.startButton]} onPress={() => {}}>
+                        <Text style={styles.actionButtonText}>START</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionButton, styles.playButton]} onPress={() => {}}>
+                        <Text style={styles.actionButtonText}>PLAY</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={() => {}}>
+                        <Text style={[styles.actionButtonText, { color: '#fff' }]}>SEND</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-            <CustomAudioRecorder
-                currentWord={currentWord}
-                onRecordingComplete={handleRecordingComplete}
-            />
-            {feedbackData && (
-                <PronunciationFeedbackModal
-                    visible={modalVisible}
-                    onClose={() => setModalVisible(false)}
-                    feedbackData={feedbackData}
-                />
-            )}
-            {feedbackData && (
-                <Button mode="contained" onPress={handleNextWord} style={styles.nextButton}>
-                    Next
-                </Button>
-            )}
-        </View>
+            {/* Pull-up menu handle and menu remain unchanged */}
+            <View style={styles.menuHandleBarContainer} pointerEvents={menuOpen ? 'none' : 'auto'}>
+                <View style={styles.menuHandleBar} />
+                <View style={styles.menuHandleShort} />
+                <TouchableOpacity
+                  style={StyleSheet.absoluteFill}
+                  activeOpacity={0.7}
+                  onPress={openMenu}
+                >
+                  <View style={{ flex: 1 }} />
+                </TouchableOpacity>
+            </View>
+            <Animated.View
+              style={[
+                styles.menuContainer,
+                { transform: [{ translateY }], backgroundColor: bgColor },
+              ]}
+              pointerEvents={menuOpen ? 'auto' : 'none'}
+              {...panResponder.panHandlers}
+            >
+              <View style={styles.menuDragIndicator} />
+              {/* Menu intentionally left empty on this page */}
+            </Animated.View>
+        </ImageBackground>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    background: {
         flex: 1,
-        padding: 16,
-        backgroundColor: '#FFFAF0',
-        alignItems: 'center',
-    },
-    loaderContainer: {
-        flex: 1,
+        width: '100%',
+        height: '100%',
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#FFFAF0',
     },
-    title: {
-        fontSize: 26,
-        fontWeight: 'bold',
-        marginBottom: 20,
-        color: '#FFA500',
-    },
-    wordContainer: {
-        alignItems: 'center',
-        marginBottom: 20,
-    },
-    wordText: {
-        fontSize: 28,
-        fontWeight: '600',
-        color: '#333',
-        marginTop: 10,
-    },
-    breakdownContainer: {
+    birdsRow: {
         flexDirection: 'row',
         justifyContent: 'center',
-        marginTop: 10,
+        alignItems: 'flex-end',
+        marginTop: 30,
+        position: 'absolute',
+        top: 40,
+        left: '40%',
+        right: 0,
+        zIndex: 100,
     },
-    segmentText: {
-        fontSize: 24,
+    bird: {
+        width: 120,
+        height: 170,
+        marginHorizontal: 10,
+        resizeMode: 'contain',
+    },
+    frame: {
+        width: '55%',
+        backgroundColor: 'rgba(255,255,255,0.25)',
+        borderRadius: 24,
+        borderWidth: 5,
+        borderColor: '#fff',
+        alignSelf: 'center',
+        paddingVertical: '3%',
+        paddingHorizontal: '4%',
+        marginTop: 80,
+        marginBottom: 10,
+        alignItems: 'center',
+        zIndex: 1,
+    },
+    infoRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 18,
+        width: '90%',
+        justifyContent: 'space-between',
+    },
+    labelPill: {
+        backgroundColor: '#AEE6FF',
+        borderRadius: 18,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        marginRight: 10,
+        minWidth: 80,
+        alignItems: 'center',
+    },
+    labelText: {
+        fontFamily: 'PermanentMarker',
+        fontSize: 16,
+        color: '#19A7CE',
         fontWeight: 'bold',
-        color: '#555',
-        marginHorizontal: 2,
+        fontStyle: 'italic',
+        letterSpacing: 1.2,
     },
-    nextButton: {
-        marginTop: 20,
-        width: 200,
-        backgroundColor: '#32CD32',
+    valueText: {
+        fontFamily: 'PermanentMarker',
+        fontSize: 22,
+        color: '#3686B7',
+        fontWeight: 'bold',
+        letterSpacing: 1.2,
+        flexShrink: 1,
+    },
+    buttonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '85%',
+        height: '15.5%',
+        marginTop: 18,
+    },
+    actionButton: {
+        flex: 1,
+        marginHorizontal: 10,
+        borderRadius: 20,
+        paddingVertical: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    startButton: {
+        backgroundColor: '#00a0cd',
+    },
+    playButton: {
+        backgroundColor: '#00a0cd',
+    },
+    sendButton: {
+        backgroundColor: '#bcd175',
+    },
+    actionButtonText: {
+        fontFamily: 'PermanentMarker',
+        fontSize: 18,
+        color: 'white',
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    // Pull-up menu styles (copied from RecordScreen)
+    menuHandleBarContainer: {
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      alignItems: 'center',
+      zIndex: 10,
+      paddingBottom: 8,
+      height: 24,
+      justifyContent: 'flex-end',
+    },
+    menuHandleBar: {
+      width: '100%',
+      height: 10,
+      borderRadius: 5,
+      backgroundColor: 'rgb(255, 255, 255)',
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+    },
+    menuHandleShort: {
+      width: 60,
+      height: 10,
+      borderRadius: 4,
+      backgroundColor: '#AEE6FF',
+      position: 'absolute',
+      bottom: 1,
+      left: '50%',
+      marginLeft: -30,
+    },
+    menuContainer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      bottom: 0,
+      height: MENU_HEIGHT,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
+      alignItems: 'center',
+      paddingTop: 16,
+      zIndex: 20,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: 0.10,
+      shadowRadius: 8,
+      elevation: 8,
+    },
+    menuDragIndicator: {
+      width: 60,
+      height: 8,
+      borderRadius: 4,
+      backgroundColor: '#AEE6FF',
+      marginBottom: 10,
+    },
+    menuItem: {
+      width: '80%',
+      paddingVertical: 18,
+      borderBottomWidth: 1,
+      borderBottomColor: '#e0e0e0',
+      alignItems: 'center',
+    },
+    menuItemText: {
+      fontFamily: 'PermanentMarker',
+      fontSize: 22,
+      color: '#AEE6FF',
+      letterSpacing: 1.5,
+    },
+    infoLine: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        minHeight: '10%',
+        backgroundColor: 'rgba(255,255,255,0.8)',
+        borderRadius: 36,
+        marginBottom: 15,
+        paddingHorizontal: 10,
+        justifyContent: 'flex-start',
+    },
+    infoLabelPill: {
+        backgroundColor: '#8decef',
+        borderRadius: 999,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
+        marginRight: 12,
+        marginLeft: -3,
+        minWidth: '25%',
+        minHeight: 60,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    infoLabelText: {
+        color: '#00a0cd',
+        fontWeight: 'bold',
+        fontSize: 18,
+        fontFamily: 'PermanentMarker',
+    },
+    infoLineText: {
+        color: '#48b2d0',
+        fontWeight: 'bold',
+        fontSize: 18,
+        flexShrink: 1,
     },
 });
 
