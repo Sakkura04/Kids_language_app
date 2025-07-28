@@ -1,0 +1,191 @@
+Trained and saved decision_tree model with RMSE: 0.08630203048359146
+Trained and saved linear_regression model with RMSE: 0.12202632867121625
+Trained and saved random_forest model with RMSE: 0.06657805649011524
+Trained and saved gradient_boosting model with RMSE: 0.07259352074653776
+Trained and saved svr model with RMSE: 0.13460588219395375
+
+
+Results using model: decision_tree
+Word complexities:
+{'one': 0.00749330955254236, 'last': 0.00749330955254236, 'year': 0.00749330955254236, 'i': 0.052631579, 'got': 0.00749330955254236, 'armor': 0.08353452446788986, 'in': 0.00749330955254236, 'a': 0.00749330955254236, 'sword.': 0.6196172248181818, 'found': 0.00749330955254236, 'dog': 0.012196461939457183, 'and': 0.00749330955254236, 'played': 0.012196461939457183, 'with': 0.00749330955254236, 'him.': 0.015037594}
+Readability metrics for sentence: 'once last year i found an armor and dog'
+  Automated Readability Index: -0.8
+  Coleman�Liau Index: 0.9
+  Flesch-Kincaid Grade Level: 0.9
+  Flesch Reading Ease: 104.64
+  Gunning Fog Index: 3.6
+  SMOG Grade: 0.0
+  Word complexities:
+    once: 0.00749330955254236
+    last: 0.00749330955254236
+    year: 0.00749330955254236
+    i: 0.052631579
+    found: 0.00749330955254236
+    an: 0.00749330955254236
+    armor: 0.08353452446788986
+    and: 0.00749330955254236
+    dog: 0.012196461939457183
+Readability metrics for sentence: 'i found a dog and played with him'
+  Automated Readability Index: -2.2
+  Coleman�Liau Index: -0.81
+  Flesch-Kincaid Grade Level: -0.8
+  Flesch Reading Ease: 114.12
+  Gunning Fog Index: 3.2
+  SMOG Grade: 0.0
+  Word complexities:
+    i: 0.052631579
+    found: 0.00749330955254236
+    a: 0.00749330955254236
+    dog: 0.012196461939457183
+    and: 0.00749330955254236
+    played: 0.012196461939457183
+    with: 0.00749330955254236
+    him: 0.00749330955254236
+
+Results using model: linear_regression
+Word complexities:
+{'one': -0.007349623447117225, 'last': 0.027791981679741815, 'year': 0.02668956985281234, 'i': -0.0009637521100380811, 'got': 0.025895606642124834, 'armor': 0.02246666690572275, 'in': -0.138622928316347, 'a': -0.16568787195704754, 'sword.': 0.06443540239705439, 'found': 0.048262851739585104, 'dog': -0.007536225933314579, 'and': -0.19727644739370373, 'played': 0.06417251644984971, 'with': -0.011413821230263417, 'him.': 0.06208044326155989}
+Readability metrics for sentence: 'once last year i found an armor and dog'
+  Automated Readability Index: -0.8
+  Coleman�Liau Index: 0.9
+  Flesch-Kincaid Grade Level: 0.9
+  Flesch Reading Ease: 104.64
+  Gunning Fog Index: 3.6
+  SMOG Grade: 0.0
+  Word complexities:
+    once: 0.04050974006265523
+    last: 0.027791981679741815
+    year: 0.02668956985281234
+    i: -0.0009637521100380811
+    found: 0.048262851739585104
+    an: 0.022079675823691018
+    armor: 0.02246666690572275
+    and: -0.19727644739370373
+    dog: -0.007536225933314579
+Readability metrics for sentence: 'i found a dog and played with him'
+  Automated Readability Index: -2.2
+  Coleman�Liau Index: -0.81
+  Flesch-Kincaid Grade Level: -0.8
+  Flesch Reading Ease: 114.12
+  Gunning Fog Index: 3.2
+  SMOG Grade: 0.0
+  Word complexities:
+    i: -0.0009637521100380811
+    found: 0.048262851739585104
+    a: -0.16568787195704754
+    dog: -0.007536225933314579
+    and: -0.19727644739370373
+    played: 0.06417251644984971
+    with: -0.011413821230263417
+    him: 0.0034049965732395743
+
+Results using model: random_forest
+Word complexities:
+{'one': 0.016192979551277777, 'last': 0.006503759405, 'year': 0.007010025069666667, 'i': 0.0985526315974999, 'got': 0.004761487055722222, 'armor': 0.08894736850999994, 'in': 0.014234714853384421, 'a': 0.00830614299481002, 'sword.': 0.7201165411662028, 'found': 0.03502631582449996, 'dog': 0.014210526330000004, 'and': 0.006787450488878891, 'played': 0.008684210535, 'with': 0.005357834148591078, 'him.': 0.010526315786666667}
+Readability metrics for sentence: 'once last year i found an armor and dog'
+  Automated Readability Index: -0.8
+  Coleman�Liau Index: 0.9
+  Flesch-Kincaid Grade Level: 0.9
+  Flesch Reading Ease: 104.64
+  Gunning Fog Index: 3.6
+  SMOG Grade: 0.0
+  Word complexities:
+    once: 0.00105263158
+    last: 0.006503759405
+    year: 0.007010025069666667
+    i: 0.0985526315974999
+    found: 0.03502631582449996
+    an: 0.014926143635081846
+    armor: 0.08894736850999994
+    and: 0.006787450488878891
+    dog: 0.014210526330000004
+Readability metrics for sentence: 'i found a dog and played with him'
+  Automated Readability Index: -2.2
+  Coleman�Liau Index: -0.81
+  Flesch-Kincaid Grade Level: -0.8
+  Flesch Reading Ease: 114.12
+  Gunning Fog Index: 3.2
+  SMOG Grade: 0.0
+  Word complexities:
+    i: 0.0985526315974999
+    found: 0.03502631582449996
+    a: 0.00830614299481002
+    dog: 0.014210526330000004
+    and: 0.006787450488878891
+    played: 0.008684210535
+    with: 0.005357834148591078
+    him: 0.01434675478176715
+
+Results using model: gradient_boosting
+Word complexities:
+{'one': 0.015752054494672697, 'last': 0.009562868735087774, 'year': 0.009562868735087774, 'i': -0.24297198697549308, 'got': 0.008476582838055524, 'armor': 0.08948816569060952, 'in': 0.007963315857207554, 'a': 0.008563902559090196, 'sword.': 0.6186881262651506, 'found': 0.008197333400318849, 'dog': 0.017704237865661904, 'and': 0.008563902559090196, 'played': 0.013246766764745382, 'with': 0.007963315857207554, 'him.': 0.13996319278200067}
+Readability metrics for sentence: 'once last year i found an armor and dog'
+  Automated Readability Index: -0.8
+  Coleman�Liau Index: 0.9
+  Flesch-Kincaid Grade Level: 0.9
+  Flesch Reading Ease: 104.64
+  Gunning Fog Index: 3.6
+  SMOG Grade: 0.0
+  Word complexities:
+    once: 0.006832356707386522
+    last: 0.009562868735087774
+    year: 0.009562868735087774
+    i: -0.24297198697549308
+    found: 0.008197333400318849
+    an: 0.008476582838055524
+    armor: 0.08948816569060952
+    and: 0.008563902559090196
+    dog: 0.017704237865661904
+Readability metrics for sentence: 'i found a dog and played with him'
+  Automated Readability Index: -2.2
+  Coleman�Liau Index: -0.81
+  Flesch-Kincaid Grade Level: -0.8
+  Flesch Reading Ease: 114.12
+  Gunning Fog Index: 3.2
+  SMOG Grade: 0.0
+  Word complexities:
+    i: -0.24297198697549308
+    found: 0.008197333400318849
+    a: 0.008563902559090196
+    dog: 0.017704237865661904
+    and: 0.008563902559090196
+    played: 0.013246766764745382
+    with: 0.007963315857207554
+    him: 0.009562868735087774
+
+Results using model: svr
+Word complexities:
+{'one': 0.08242016663265132, 'last': 0.07948573487044623, 'year': 0.08087895010769645, 'i': 0.10082642441515673, 'got': 0.0869620768452181, 'armor': 0.09997819964934666, 'in': 0.10084614463143853, 'a': 0.10084614463143853, 'sword.': 0.10026389004294071, 'found': 0.09176132372772199, 'dog': 0.0971986312311766, 'and': 0.10084614463143853, 'played': 0.09810410847739152, 'with': 0.10070527589587289, 'him.': 0.10026389036542398}
+Readability metrics for sentence: 'once last year i found an armor and dog'
+  Automated Readability Index: -0.8
+  Coleman�Liau Index: 0.9
+  Flesch-Kincaid Grade Level: 0.9
+  Flesch Reading Ease: 104.64
+  Gunning Fog Index: 3.6
+  SMOG Grade: 0.0
+  Word complexities:
+    once: 0.08965114177029558
+    last: 0.07948573487044623
+    year: 0.08087895010769645
+    i: 0.10082642441515673
+    found: 0.09176132372772199
+    an: 0.0833305601302647
+    armor: 0.09997819964934666
+    and: 0.10084614463143853
+    dog: 0.0971986312311766
+Readability metrics for sentence: 'i found a dog and played with him'
+  Automated Readability Index: -2.2
+  Coleman�Liau Index: -0.81
+  Flesch-Kincaid Grade Level: -0.8
+  Flesch Reading Ease: 114.12
+  Gunning Fog Index: 3.2
+  SMOG Grade: 0.0
+  Word complexities:
+    i: 0.10082642441515673
+    found: 0.09176132372772199
+    a: 0.10084614463143853
+    dog: 0.0971986312311766
+    and: 0.10084614463143853
+    played: 0.09810410847739152
+    with: 0.10070527589587289
+    him: 0.07925597073322387
