@@ -20,6 +20,106 @@ This project aims to enhance reading education by leveraging the power of Natura
 - Support diverse learning needs with inclusive digital tools.
 - Focus on overcoming accessibility challenges for seamless educational integration.
 
+## Setup and Installation
+
+### Prerequisites
+
+- Python 3.8 or higher
+- Virtual environment (recommended)
+
+### Installation Steps
+
+1. **Clone the repository and navigate to the backend directory:**
+
+   ```bash
+   cd "D:\Canada research\backend"
+   ```
+
+2. **Create and activate a virtual environment:**
+
+   ```bash
+   python -m venv .venv
+   .venv\Scripts\activate  # On Windows
+   ```
+
+3. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+## Usage Instructions
+
+### 1. PDF to Word Conversion
+
+Navigate to the books directory and run the PDF conversion script:
+
+```bash
+cd "D:\Canada research\frontend\assets\books"
+python pdf_to_word.py
+```
+
+**Example usage:**
+
+```
+Available PDF files:
+- 79 The Ugly Duckling.pdf
+- The_Whistlig_Man.pdf
+
+Enter the exact PDF file name to parse (with .pdf extension): The_Whistlig_Man.pdf
+How many columns does the text have per page? (default 2): 1
+From which page number should parsing begin? (0-based, default 0): 4
+At which page number should parsing stop? (inclusive, 0-based, leave blank for last page): 43
+
+Saved Word document to: D:\Canada research\frontend\assets\books\The_Whistlig_Man.docx
+```
+
+### 2. Database Setup
+
+Create the necessary databases and tables:
+
+```bash
+cd "D:\Canada research\backend"
+python db/create_databases.py
+```
+
+**Expected output:**
+
+```
+Databases and tables created successfully.
+```
+
+### 3. Book Processing
+
+Add books to the database and process them into fragments:
+
+```bash
+python db/book_in_db.py
+```
+
+**Example usage:**
+
+```
+Do you want to add all new books to the db? (yes/no): y
+Added 2 books to books table.
+
+Available Word files:
+- 79 The Ugly Duckling.docx
+- The_Whistlig_Man.docx
+
+Enter the exact file name to process (with .docx extension): 79 The Ugly Duckling.docx
+How many sentences per fragment? (default 3): 4
+
+Inserted 28 fragments into book_fragments table.
+```
+
+### 4. Start the Server
+
+Run the Flask server:
+
+```bash
+python server.py
+```
+
 ## Features for Complexity Estimation
 
 The complexity of a word is estimated using five features:
@@ -35,7 +135,6 @@ The complexity of a word is estimated using five features:
 5. **Lemma Frequency in a Certain Corpus**: The frequency of the word's lemma in a specific corpus. Like word frequency, lower lemma frequency can indicate higher complexity.
 
 ## Methodology
-
 
 ## System Overview
 
@@ -68,12 +167,42 @@ Collect data on word complexity using the following resources:
 1. Label a set of words with their difficulty levels based on grade (e.g., Grade 2, Grade 4, Grade 6), using educator input or existing educational standards.
 2. Use the labeled dataset to train a machine learning model, selecting an algorithm that performs well on classification tasks (e.g., Random Forest, Gradient Boosting Machines, or Neural Networks).
 
-
 ### Implementation
 
 - Integrate the trained model into an application that processes audio transcripts.
 - For each processed transcript, use the model to identify words that are likely to be difficult for students at specific grade levels.
 - Save the identified words, along with their difficulty levels and features, in a database for further educational use.
+
+## Age of Acquisition (AoA) Calculation Method
+
+The Age of Acquisition (AoA) was calculated using the following methodology:
+
+### Data Collection
+
+- Used Amazon Mechanical Turk to collect AoA ratings for 30,121 English content words from 1,960 responders residing in the U.S.
+- Responders were asked to enter the age (in years) at which they thought they had learned each word, or to enter "x" if they did not know the word.
+- Each word list contained 300 target words, 10 calibrator words, and 52 control words.
+
+### Data Trimming
+
+- Removed empty cells, invalid responses, and extreme outliers from the data set.
+- Excluded lists that had a low correlation with the Bristol norms for the control words.
+- The resulting data set comprised 696,048 valid ratings, of which 615,967 were numeric and 76,211 were "Don't knows".
+
+### Data Analysis
+
+- Calculated the mean AoA ratings and standard deviations for each word, based on the numeric ratings only.
+- Reported the number of responders who gave numeric ratings and the number of responders who rated the word as unknown.
+- Compared ratings with other AoA norms and with the lexical decision data of the English Lexicon Project.
+- Discussed the effects of AoA on word recognition and vocabulary growth.
+
+### Word List Categories
+
+**Target words**: 30,121 English content words (nouns, verbs, and adjectives) that are generally known by at least 85% of the raters.
+
+**Calibrator words**: 10 words that represent the entire range of the AoA scale, based on previous ratings. Examples include "shoe", "insane", and "hernia".
+
+**Control words**: 52 words that cover the entire AoA range and have existing ratings from other studies. Examples include "dog", "honest", and "deluge".
 
 ## References
 
@@ -81,31 +210,6 @@ Collect data on word complexity using the following resources:
 - V Kuperman et al. 2012. Age-of-acquisition ratings for 30,000 English words. Behavior Research Methods.
 - M Brysbaert et al. 2013. Concreteness ratings for 40 thousand generally known English word lemmas. Behavior Research Methods.
 
-d
-
-
-
-# Data Links
+## Data Links
 
 https://github.com/ArtsEngine/concreteness
-
-
-
-
-
-Intergrate this information into the README.md file.
-
-
-Age of acquisition (AoA) was calculated for each word, but it provides some clues based on the methods and results sections. Here is a possible summary of the calculation method:
-
-Data collection: The authors used the Amazon Mechanical Turk to collect AoA ratings for 30,121 English content words from 1,960 responders residing in the U.S. The responders were asked to enter the age (in years) at which they thought they had learned each word, or to enter “x” if they did not know the word. Each word list contained 300 target words, 10 calibrator words, and 52 control words.
-Data trimming: The authors removed empty cells, invalid responses, and extreme outliers from the data set. They also excluded the lists that had a low correlation with the Bristol norms for the control words. The resulting data set comprised 696,048 valid ratings, of which 615,967 were numeric and 76,211 were “Don’t knows”.
-Data analysis: The authors calculated the mean AoA ratings and standard deviations for each word, based on the numeric ratings only. They also reported the number of responders who gave numeric ratings and the number of responders who rated the word as unknown. They compared their ratings with other AoA norms and with the lexical decision data of the English Lexicon Project. They also discussed the effects of AoA on word recognition and vocabulary growth.
-
-
-
-the words in each list are:
-
-Target words: These are the words for which the authors wanted to collect age-of-acquisition (AoA) ratings from the participants. They are 30,121 English content words (nouns, verbs, and adjectives) that are generally known by at least 85% of the raters.
-Calibrator words: These are 10 words that represent the entire range of the AoA scale, based on previous ratings. They are used to introduce the participants to the diversity of words that they could encounter and to help them calibrate their ratings. For example, some of the calibrator words are “shoe”, “insane”, and “hernia”.
-Control words: These are 52 words that cover the entire AoA range and have existing ratings from other studies. They are randomly distributed over the word lists and are used to check the validity and reliability of the participants’ ratings. For example, some of the control words are “dog”, “honest”, and “deluge”.
