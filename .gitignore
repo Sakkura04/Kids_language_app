@@ -1,0 +1,50 @@
+# Android Gradle files
+frontend/android/.gradle/
+frontend/android/build/
+frontend/android/app/build/
+frontend/android/gradle/
+frontend/android/local.properties
+
+# React Native
+frontend/node_modules/
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.expo/
+frontend/dist/
+frontend/.env
+
+# Python
+__pycache__/
+backend/*.pyc
+backend/*.pyo
+backend/*.pyd
+backend/.Python
+backend/.venv/
+backend/venv/
+backend/env/
+backend/.env
+
+# Database files
+backend/db/*.db
+backend/db/*.sqlite
+backend/db/*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp 
