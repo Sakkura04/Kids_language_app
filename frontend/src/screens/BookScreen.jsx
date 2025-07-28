@@ -23,6 +23,7 @@ const BookScreen = () => {
   const [books, setBooks] = useState([]);
   const [selectedBookId, setSelectedBookId] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [choosing, setChoosing] = useState(false);
 
   useEffect(() => {
     // Fetch books from backend
@@ -42,6 +43,37 @@ const BookScreen = () => {
     };
     fetchBooks();
   }, []);
+
+  const handleChooseBook = async () => {
+    if (!selectedBookId) return;
+    
+    setChoosing(true);
+    try {
+      const response = await fetch('http://134.190.225.163:5000/select-book', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ book_id: selectedBookId }),
+      });
+      
+      if (response.ok) {
+        console.log('Book selected successfully');
+        // Navigate to Record screen with selected book info
+        const selectedBook = books.find(b => b.book_id === selectedBookId);
+        navigation.replace('Record', { 
+          selectedBookId: selectedBookId,
+          selectedBookName: selectedBook?.name 
+        });
+      } else {
+        console.error('Failed to select book');
+      }
+    } catch (error) {
+      console.error('Error selecting book:', error);
+    } finally {
+      setChoosing(false);
+    }
+  };
 
   const bgColor = translateY.interpolate({
     inputRange: [0, MENU_HEIGHT - MENU_CLOSED_Y],
@@ -125,6 +157,20 @@ const BookScreen = () => {
                 Selected book: {books.find((b) => b.book_id === selectedBookId)?.name}
               </Text>
             )}
+            <TouchableOpacity
+              style={[
+                styles.chooseButton,
+                (!selectedBookId || choosing) && styles.chooseButtonDisabled
+              ]}
+              onPress={handleChooseBook}
+              disabled={!selectedBookId || choosing}
+            >
+              {choosing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={styles.chooseButtonText}>CHOOSE</Text>
+              )}
+            </TouchableOpacity>
           </>
         )}
       </View>
@@ -232,6 +278,23 @@ const styles = StyleSheet.create({
     fontFamily: 'PermanentMarker',
     fontSize: 20,
     color: '#3686B7',
+  },
+  chooseButton: {
+    backgroundColor: '#4A90E2',
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 25,
+    marginTop: 20,
+  },
+  chooseButtonDisabled: {
+    backgroundColor: '#ccc',
+  },
+  chooseButtonText: {
+    fontFamily: 'PermanentMarker',
+    fontSize: 18,
+    color: '#fff',
+    fontWeight: 'bold',
+    letterSpacing: 1,
   },
   // Pull-up menu styles (reuse from HomeScreen)
   menuHandleBarContainer: {
