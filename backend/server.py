@@ -2,9 +2,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 from predictor import WordComplexityPredictor
 from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part
-from server_help import extract_missing_keywords_from_result, get_first_fragment_id, get_last_fragment_id,get_fragment_by_id_
+from server_help import extract_missing_keywords_from_result
 from db.gpt_api import generate_word_info
-from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id
+from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id
 import sqlite3
 
 app = Flask(__name__)
@@ -66,14 +66,16 @@ def select_book():
 @app.route("/get-reading-text", methods=["POST"])
 def get_reading_text():
     data = request.get_json()
-    fragment_id = get_first_fragment_id(selected_book_id) + data.get("fragment_id", 0)  # Calculate fragment_id as selected_book_id + provided fragment_id
-    print(f"Selected book ID: {selected_book_id}")
-    print(f"Selected fragment_id: {fragment_id}")
+    fragment_id = get_first_fragment_id(selected_book_id) + data.get("fragment_id", 0) - 1 # Calculate fragment_id as selected_book_id + provided fragment_id
 
-    if fragment_id is None:
+    if fragment_id == None:
         return jsonify({"error": "fragment_id is required"}), 400
     
-    fragment = get_fragment_by_id_(fragment_id)
+    fragment = get_fragment_by_id(fragment_id)
+    
+    if fragment == None:
+        return jsonify({"error": "fragment_id is required"}), 400
+
     return jsonify({
         "fragment_id": fragment["fragment_id"],
         "chapter_name": fragment["chapter_name"],
@@ -81,13 +83,14 @@ def get_reading_text():
         "book_id": fragment["book_id"]
     })
 
-@app.route("/get-max-fragment-id", methods=["POST"])
-def get_max_fragment_id():
+@app.route("/get-min-max-fragment-id", methods=["POST"])
+def get_min_max_fragment_id():
     data = request.get_json()
-    book_id = data.get("book_id", selected_book_id)  # Use selected book_id instead of default 1
-    print(f"Selected book ID: {selected_book_id}")
-    max_fragment_id = get_last_fragment_id(book_id)
-    return jsonify({"max_fragment_id": max_fragment_id})
+    max_fragment_id = get_last_fragment_id(book_id=selected_book_id)
+    return jsonify({
+        "max_fragment_id": max_fragment_id,
+        "min_fragment_id": get_first_fragment_id(selected_book_id),
+    })
 
 @app.route("/get-books", methods=["GET"])
 def get_books():

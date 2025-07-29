@@ -28,6 +28,7 @@ const RecordScreen = ({ navigation, route }) => {
   const [fragmentId, setFragmentId] = useState(1); // Start from fragment 1
   const [fragment, setFragment] = useState({ fragment_id: 1, chapter_name: '', text: '' });
   const [maxFragmentId, setMaxFragmentId] = useState(null); // To be set after fetch
+  const [minFragmentId, setMinFragmentId] = useState(null); // To be set after fetch
   const [streak] = useState(5); // Example streak
   const [isRecording, setIsRecording] = useState(false);
   const [isRecorded, setIsRecorded] = useState(false);
@@ -95,7 +96,7 @@ const RecordScreen = ({ navigation, route }) => {
 
   // Fetch max fragmentId for the current book
   useEffect(() => {
-    fetch('http://134.190.225.163:5000/get-max-fragment-id', {
+    fetch('http://134.190.225.163:5000/get-min-max-fragment-id', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ book_id: bookId }),
@@ -104,6 +105,9 @@ const RecordScreen = ({ navigation, route }) => {
       .then((data) => {
         if (data && data.max_fragment_id) {
           setMaxFragmentId(data.max_fragment_id);
+        }
+        if (data && data.min_fragment_id) {
+          setMinFragmentId(data.min_fragment_id);
         }
       })
       .catch((error) => {
@@ -251,9 +255,11 @@ const RecordScreen = ({ navigation, route }) => {
 
   // Next/Back handlers
   const handleNext = () => {
-    if (maxFragmentId && fragmentId >= maxFragmentId) return;
+    if (fragmentId + minFragmentId - 1 >= maxFragmentId) return;
     setFragmentId((prev) => prev + 1);
   };
+  
+  
   const handleBack = () => {
     if (fragmentId <= 1) return;
     setFragmentId((prev) => prev - 1);
@@ -293,7 +299,7 @@ const RecordScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.pillNavButton}
                 onPress={handleNext}
-                disabled={maxFragmentId && fragmentId >= maxFragmentId}
+                disabled={fragmentId + minFragmentId - 1 >= maxFragmentId}
               >
                 <Text style={styles.pillNavButtonText}>NEXT</Text>
               </TouchableOpacity>
