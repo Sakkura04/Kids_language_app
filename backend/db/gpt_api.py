@@ -25,21 +25,23 @@ def generate_word_info(word):
     """
     import json
     prompt = f"""
-For the English word '{word}', provide the following as a JSON object with these keys:
-- antonyms: a comma-separated string of antonyms
-- synonyms: a comma-separated string of synonyms
-- examples: three example sentences using the word
-- transcription: the IPA transcription of the word
-- syllables: the word broken down into syllables, separated by hyphens
-Example output:
-{{
-  "antonyms": "...",
-  "synonyms": "...",
-  "examples": "...",
-  "transcription": "...",
-  "syllables": "..."
-}}
-"""
+        For the English word '{word}', provide the following as a JSON object with these keys:
+        - meaning: the meaning of the word
+        - antonyms: a comma-separated string of antonyms
+        - synonyms: a comma-separated string of synonyms
+        - examples: three example sentences using the word
+        - transcription: the IPA transcription of the word
+        - syllables: the word broken down into syllables, separated by hyphens
+        Example output:
+        {{
+        "meaning": "...",
+        "antonyms": "...",
+        "synonyms": "...",
+        "examples": "...",
+        "transcription": "...",
+        "syllables": "..."
+        }}
+    """
     response = chat_with_gpt(prompt, model="gpt-4o-mini", temperature=0.2, max_tokens=256)
     try:
         info = json.loads(response)
