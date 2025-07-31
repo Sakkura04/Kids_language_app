@@ -2,6 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Animated, PanResponder, Dimensions, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
+import { ScrollView} from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 const MENU_CLOSED_Y = 45;
@@ -121,50 +122,64 @@ const BookScreen = () => {
       style={styles.background}
       resizeMode="cover"
     >
-      
-      {/* Main content */}
-      <View style={styles.content}>
-        {loading ? (
-          <ActivityIndicator size="large" color="#3686B7" />
-        ) : books.length === 0 ? (
-          <Text style={styles.bookText}>No books found.</Text>
-        ) : (
-          <>
-            <Text style={styles.bookText}>Choose a book:</Text>
-            <View style={styles.pickerContainer}>
-              <Picker
-                selectedValue={selectedBookId}
-                onValueChange={(itemValue) => setSelectedBookId(itemValue)}
-                style={styles.picker}
-                itemStyle={styles.pickerItem}
-              >
-                {books.map((book) => (
-                  <Picker.Item key={book.book_id} label={book.name} value={book.book_id} />
-                ))}
-              </Picker>
-            </View>
-            {selectedBookId && (
-              <Text style={styles.bookText}>
-                Selected book: {books.find((b) => b.book_id === selectedBookId)?.name}
-              </Text>
-            )}
-            <TouchableOpacity
-              style={[
-                styles.chooseButton,
-                (!selectedBookId || choosing) && styles.chooseButtonDisabled
-              ]}
-              onPress={handleChooseBook}
-              disabled={!selectedBookId || choosing}
-            >
-              {choosing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <Text style={styles.chooseButtonText}>CHOOSE</Text>
-              )}
-            </TouchableOpacity>
-          </>
+    {/* Main content */}
+    <View style={styles.overlayFrame}>
+    <View style={styles.innerBox}>
+      <Text style={styles.title}>Books :)</Text>
+
+      {loading ? (
+         <ActivityIndicator size="large" color="#3686B7" />
+      ) : books.length === 0 ? (
+        <Text style={styles.bookText}>No books found.</Text>
+      ) : (
+        <>
+          <View style={styles.bookList}>
+            <ScrollView>
+              {books.map(book => (
+                <TouchableOpacity
+                  key={book.book_id}
+                  onPress={() => setSelectedBookId(book.book_id)}
+                  style={{
+                    padding: 10,
+                    backgroundColor: selectedBookId === book.book_id ? '#00a0cd' : 'transparent',
+                    borderRadius: 20,
+                    margin: 2,
+                  }}
+                >
+                  <Text style={{ color: selectedBookId === book.book_id ? 'white' : 'rgba(0, 160, 205, 0.7)', fontSize: 18 }}>
+                  {book.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+                      
+          <View style={styles.penguinContainer}>
+            <ImageBackground
+               source={require('../../assets/images/bookscreen.png')}
+               style={styles.penguinImage}
+               resizeMode="contain"
+            />
+          </View>
+        </>
         )}
-      </View>
+    </View>
+      <TouchableOpacity
+        style={[
+          styles.chooseButton,
+          (!selectedBookId || choosing) && styles.chooseButtonDisabled
+        ]}
+        onPress={handleChooseBook}
+        disabled={!selectedBookId || choosing}
+        >
+        {choosing ? (
+          <ActivityIndicator size="small" color="#fff" />
+        ) : (
+           <Text style={styles.chooseButtonText}>CHOOSE</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+
 
       {/* Pull-up menu handle */}
       <View style={styles.menuHandleBarContainer} pointerEvents={menuOpen ? 'none' : 'auto'}>
@@ -252,6 +267,70 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 16,
   },
+
+  overlayFrame: {
+    position: 'absolute',
+    top: '17%',
+    width: '55%',
+    height: '70%',
+    borderWidth: 5,
+    borderColor: 'white',
+    borderRadius: 30,
+    padding: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },  
+  
+  innerBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+    width: '90%',
+    height: '80%',
+    alignItems: 'center',
+    padding: 16,
+    position: 'relative',
+  },
+  
+  title: {
+    fontFamily: 'PermanentMarker',
+    fontSize: 22,
+    color: '#fff', // білий текст
+    fontWeight: 'bold', // жирний
+    textAlign: 'center', // по центру
+    marginBottom: 16,
+    textTransform: 'uppercase',
+    backgroundColor: '#B0CE92',
+    width: '95%',
+    padding: 8,
+    borderRadius: 25,
+  },
+  
+  
+  bookList: {
+    width: '95%',
+    flex: 1,
+    borderWidth: 2,
+    borderColor: '#00a0cd',
+    borderRadius: 25,
+    overflow: 'hidden',
+    backgroundColor: 'transparent',
+    marginBottom: 20,
+  },
+  
+  penguinContainer: {
+    position: 'absolute',
+    bottom: 10,
+    right: 10,
+    width: 120, // збільшено
+    height: 80, // збільшено
+  },
+  
+  penguinImage: {
+    width: '100%',
+    height: '100%',
+  },
+  
   pickerContainer: {
     width: '80%',
     backgroundColor: '#fff',
@@ -271,12 +350,13 @@ const styles = StyleSheet.create({
     color: '#3686B7',
   },
   chooseButton: {
-    backgroundColor: '#4A90E2',
+    backgroundColor: 'rgba(0, 160, 205, 0.8)', // прозорість 80%
     paddingHorizontal: 30,
     paddingVertical: 12,
     borderRadius: 25,
     marginTop: 20,
   },
+  
   chooseButtonDisabled: {
     backgroundColor: '#ccc',
   },
@@ -356,5 +436,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1.5,
   },
 });
+
 
 export default BookScreen;
