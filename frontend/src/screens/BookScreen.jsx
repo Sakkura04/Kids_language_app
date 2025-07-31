@@ -121,16 +121,7 @@ const BookScreen = () => {
       style={styles.background}
       resizeMode="cover"
     >
-      {/* Header with Home navigation */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.replace('Home')}>
-          <Text style={styles.headerText}>Home</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Book</Text>
-        {/* Placeholder for alignment */}
-        <View style={{ width: 60 }} />
-      </View>
-
+      
       {/* Main content */}
       <View style={styles.content}>
         {loading ? (
