@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ImageBackground, Image, TouchableOpacity, SafeA
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
 import RNFS from 'react-native-fs';
 import { PermissionsAndroid } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import AudioRecorderComponent from '../components/AudioRecorder';
 
 const paragraphs = [
@@ -264,6 +265,49 @@ const RecordScreen = ({ navigation, route }) => {
     if (fragmentId <= 1) return;
     setFragmentId((prev) => prev - 1);
   };
+
+  // Load saved fragment state when component mounts
+  useEffect(() => {
+    const loadSavedFragment = async () => {
+      try {
+        const savedFragmentId = await AsyncStorage.getItem(`book_${bookId}_fragment`);
+        if (savedFragmentId) {
+          setFragmentId(parseInt(savedFragmentId));
+        }
+      } catch (error) {
+        console.error('Error loading saved fragment:', error);
+      }
+    };
+    loadSavedFragment();
+  }, [bookId]);
+
+  // Save fragment state when leaving the screen
+  useEffect(() => {
+    const saveFragmentState = async () => {
+      try {
+        await AsyncStorage.setItem(`book_${bookId}_fragment`, fragmentId.toString());
+      } catch (error) {
+        console.error('Error saving fragment state:', error);
+      }
+    };
+
+    // Save when component unmounts
+    return () => {
+      saveFragmentState();
+    };
+  }, [fragmentId, bookId]);
+
+  // Save fragment state when fragmentId changes
+  useEffect(() => {
+    const saveFragmentState = async () => {
+      try {
+        await AsyncStorage.setItem(`book_${bookId}_fragment`, fragmentId.toString());
+      } catch (error) {
+        console.error('Error saving fragment state:', error);
+      }
+    };
+    saveFragmentState();
+  }, [fragmentId, bookId]);
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: '#fff' }}>
