@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from predictor import WordComplexityPredictor
-from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, get_mistakes_with_words
+from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
 from server_help import extract_missing_keywords_from_result, remove_digits_and_specials
 from db.gpt_api import generate_word_info
-from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, pull_existing_word
+from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
 
 app = Flask(__name__)
@@ -71,9 +71,9 @@ def process_recording():
             word_id = word_exists_in_existing_words(word)
             if word_id == -1:
                 fill_existing_words(word)
-            else:
-                print(f"Word '{word}' already exists in the database")
-            word_id = word_exists_in_existing_words(word)
+            if check_word_mastery(word_id) is False:  
+                continue
+            
             add_mistake(word, word_id)
 
     # Check if this text-part was already read
@@ -127,12 +127,63 @@ def get_mispronounced_words():
     print("words:", words) 
     return jsonify({"words": words})
 
+@app.route("/analyze-pronunciation", methods=["POST"])
+def analyze_pronunciation():
+    try:
+        data = request.get_json()
+        audio_base64 = data.get("audio")
+        word = data.get("word")
+        
+        if not audio_base64 or not word:
+            return jsonify({"error": "Missing audio or word data"}), 400
+        
+        print(f"Analyzing pronunciation for word: {word}")
+        
+        # TODO: Implement actual pronunciation analysis
+        # For now, return mock data structure
+        mock_feedback = [
+            {"segment": "ap", "status": "correct"},
+            {"segment": "ple", "status": "incorrect"}
+        ]
+        
+        response_data = {
+            "transcription": f"User said: {word}",
+            "feedback": mock_feedback,
+            "feedback_sentence": "Nice try! You had a few small mistakes.",
+            "correct_audio": "base64_audio_placeholder",  # TODO: Add actual correct pronunciation audio
+            "segment_audios": {
+                "ap": "base64_audio_placeholder",
+                "ple": "base64_audio_placeholder"
+            }
+        }
+        
+        return jsonify(response_data)
+        
+    except Exception as e:
+        print(f"Error in analyze_pronunciation: {str(e)}")
+        return jsonify({"error": "Failed to analyze pronunciation"}), 500
 
-    
 #-----------------VOCABULARY SCREEN------------------
-# @app.route("/get-pronunciation-words", methods=["GET"])
-# def get_mispronounced_words():
-#     pull_existing_word()
+@app.route("/get-vocabulary-words", methods=["GET"])
+def get_misinterpreted_words():
+    words = get_words_vocabulary()
+    return jsonify({"words": words})
+
+@app.route("/increase-recognition", methods=["POST"])
+def increase_word_recognition():
+    try:
+        data = request.get_json()
+        word_id = data.get("word_id")
+        
+        if word_id is None:
+            return jsonify({"error": "word_id is required"}), 400
+        
+        increase_recognition(word_id)
+        return jsonify({"message": "Recognition increased successfully"})
+        
+    except Exception as e:
+        print(f"Error in increase_word_recognition: {str(e)}")
+        return jsonify({"error": "Failed to increase recognition"}), 500
     
 #-------------------BOOK SCREEN-------------------
 @app.route("/select-book", methods=["POST"])

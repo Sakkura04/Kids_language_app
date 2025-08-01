@@ -201,29 +201,68 @@ def word_exists_in_existing_words(word):
     return row[0] if row else -1
 
 
-def pull_existing_word(id = -1):
-    """
-    Checks if the given word exists in the existing_words table in book.db.
-    Returns the index (rowid) if it exists, -1 otherwise.
-    If the word is empty or None, or the table is empty, returns -1 immediately.
-    """
+def get_random_meanings_except(excluded_meaning):
     conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
-    cur.execute("SELECT COUNT(*) FROM existing_words")
-    count = cur.fetchone()[0]
-    if count == 0:
-        conn.close()
-        return -1
-        
-    if id == -1:
-        cur.execute("SELECT * FROM existing_words")
-    else:
-        cur.execute("SELECT * FROM existing_words WHERE id = ? LIMIT 1", (id,))
-    info = cur.fetchone()
+
+    query = """
+    SELECT id, meaning 
+    FROM existing_words 
+    WHERE meaning != ? 
+    ORDER BY RANDOM() 
+    LIMIT 3
+    """
+
+    cur.execute(query, (excluded_meaning,))
+    rows = cur.fetchall()
     conn.close()
-    return info if info else 0
 
+    result = [{"id": row[0], "meaning": row[1]} for row in rows]
+    return result
 
+    
+def get_words_vocabulary():
+    conn = sqlite3.connect(RESULT_DB_PATH)
+    cur = conn.cursor()
+    conn.execute(f"ATTACH DATABASE '{BOOK_DB_PATH}' AS book")
+
+    query = """
+    SELECT 
+        m.word_index, 
+        m.recognized_by_meaning, 
+        b.word, 
+        b.meaning, 
+        b.antonyms,
+        b.synonyms,
+        b.examples
+    FROM mistakes m
+    JOIN book.existing_words b ON m.word_index = b.id
+    WHERE m.recognized_by_meaning < 5
+    """
+    cur.execute(query)
+    results = cur.fetchall()
+    print("AAAAA")
+    vocab = []
+    print("results:", results)
+    for word_data in results:
+        rand_meanings = get_random_meanings_except(word_data[3])
+        # Extract just the meaning strings from the objects
+        options = [item["meaning"] for item in rand_meanings]
+        # Add the correct meaning to the options
+        options.append(word_data[3])
+        vocab.append({
+            "id": word_data[0],
+            "recognized_by_meaning": word_data[1],
+            "word": word_data[2],
+            "meaning": word_data[3],
+            "antonyms": word_data[4],
+            "synonyms": word_data[5],
+            "examples": word_data[6],
+            "options": options
+        })
+
+    conn.close()
+    return vocab
 
 #------------------------RESULTS.MISTAKES----------------------------
 def add_mistake(word, word_id):
@@ -249,8 +288,6 @@ def add_mistake(word, word_id):
     )
     conn.commit()
     conn.close()
-
-import sqlite3
 
 def get_mistakes_with_words():
     conn = sqlite3.connect(RESULT_DB_PATH)
@@ -284,6 +321,40 @@ def get_mistakes_with_words():
 
     conn.close()
     return mistakes
+
+def check_word_mastery(word_id):
+    """
+    Checks if a word in the mistakes table has both recognized_by_meaning and pronounced_correctly equal to 5.
+    Returns True if both are 5, False otherwise.
+    """
+    conn = sqlite3.connect(RESULT_DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT recognized_by_meaning, pronounced_correctly FROM mistakes WHERE word_index = ?",
+        (word_id,)
+    )
+    row = cur.fetchone()
+    conn.close()
+    
+    if row:
+        recognized, pronounced = row
+        return recognized == 5 and pronounced == 5
+    else:
+        return False
+
+def increase_recognition(word_id):
+    """
+    Increases the recognized_by_meaning field by 1 for the given word_id.
+    If the value is already 5, nothing happens.
+    """
+    conn = sqlite3.connect(RESULT_DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE mistakes SET recognized_by_meaning = recognized_by_meaning + 1 WHERE word_index = ? AND recognized_by_meaning < 5",
+        (word_id,)
+    )
+    conn.commit()
+    conn.close()
 
 
 #------------------------BOOK.FRAGMENTS----------------------------
@@ -327,4 +398,21 @@ def get_last_fragment_id(book_id):
     row = cur.fetchone()
     conn.close()
     return row[0] if row and row[0] is not None else 0
+
+def increase_recognition(word_id):
+    """
+    Increases the recognized_by_meaning value for a word in the mistakes table.
+    The value is capped at 5.
+    """
+    conn = sqlite3.connect(RESULT_DB_PATH)
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE mistakes SET recognized_by_meaning = recognized_by_meaning + 1 WHERE word_index = ? AND recognized_by_meaning < 5",
+        (word_id,)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
+
 
