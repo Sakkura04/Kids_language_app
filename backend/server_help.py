@@ -1,4 +1,5 @@
 import sqlite3
+import string
 
 def extract_missing_keywords_from_result(result):
     """
@@ -16,4 +17,14 @@ def extract_missing_keywords_from_result(result):
     return missed, new
 
 
-
+def remove_digits_and_specials(arr):
+    allowed_chars = set(string.ascii_letters)  #only english letters
+    cleaned = []
+    
+    for item in arr:
+        if len(item) <= 1:
+            continue
+        if all(char in allowed_chars for char in item):
+            cleaned.append(item)
+    
+    return cleaned

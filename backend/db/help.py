@@ -5,7 +5,8 @@ from db.gpt_api import generate_word_info
 import sqlite3
 
 BOOKS_DIR = r"D:\Canada research\frontend\assets\books"
-DB_PATH = r"D:\Canada research\backend\db\book.db"
+BOOK_DB_PATH = "db/book.db"
+RESULT_DB_PATH = "db/results.db"
 
 def get_word_file():
     files = [f for f in os.listdir(BOOKS_DIR) if f.lower().endswith('.docx')]
@@ -36,7 +37,7 @@ def split_into_fragments(text, sentences_per_fragment=3):
     return fragments
 
 def insert_fragments_to_db(fragments, book_id):
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     for frag in fragments:
         cur.execute(
@@ -47,19 +48,19 @@ def insert_fragments_to_db(fragments, book_id):
     conn.close()
     print(f"Inserted {len(fragments)} fragments into book_fragments table.")
 
-def print_table(table_name):
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute(f"SELECT * FROM {table_name}")
-    rows = cur.fetchall()
-    # Вивести назви колонок
-    col_names = [description[0] for description in cur.description]
-    print(" | ".join(col_names))
-    print("-" * 50)
-    # Вивести всі рядки
-    for row in rows:
-        print(" | ".join(str(x) if x is not None else "" for x in row))
-    conn.close()
+# def print_table(table_name):
+#     conn = sqlite3.connect(DB_PATH)
+#     cur = conn.cursor()
+#     cur.execute(f"SELECT * FROM {table_name}")
+#     rows = cur.fetchall()
+#     # Вивести назви колонок
+#     col_names = [description[0] for description in cur.description]
+#     print(" | ".join(col_names))
+#     print("-" * 50)
+#     # Вивести всі рядки
+#     for row in rows:
+#         print(" | ".join(str(x) if x is not None else "" for x in row))
+#     conn.close()
 
 def add_result_text_record(read_part, results_analysis):
     """
@@ -69,8 +70,7 @@ def add_result_text_record(read_part, results_analysis):
     - results_analysis: the analysis result (as string)
     """
     import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\results.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(RESULT_DB_PATH)
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO text (student_index, read_part, results_analysis) VALUES (?, ?, ?)",
@@ -84,8 +84,7 @@ def find_fragment_by_text(search_text):
     Searches for a fragment in the book_fragments table by the exact 'text' column value.
     Returns the fragment_id (index) if found, else None.
     """
-    DB_PATH = r"D:\Canada research\backend\db\book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT fragment_id FROM book_fragments WHERE text = ?", (search_text,))
     result = cur.fetchone()
@@ -101,9 +100,7 @@ def update_fragment_by_id(fragment_id, new_text=None, new_chapter_name=None):
     Only updates fields that are not None.
     Returns True if update was successful (row existed), False otherwise.
     """
-    import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     fields = []
     values = []
@@ -130,9 +127,7 @@ def find_text_record_by_read_part(read_part):
     Searches for a record in the text table by the exact read_part value.
     Returns the text_index if found, else None.
     """
-    import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\results.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(RESULT_DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT text_index FROM text WHERE read_part = ?", (read_part,))
     result = cur.fetchone()
@@ -142,14 +137,13 @@ def find_text_record_by_read_part(read_part):
     else:
         return None
 
+
 def update_text_record_by_read_part(read_part, new_results_analysis):
     """
     Updates the results_analysis of a record in the text table by its read_part.
     Returns True if update was successful, False otherwise.
     """
-    import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\results.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(RESULT_DB_PATH)
     cur = conn.cursor()
     cur.execute(
         "UPDATE text SET results_analysis = ? WHERE read_part = ?",
@@ -160,19 +154,20 @@ def update_text_record_by_read_part(read_part, new_results_analysis):
     conn.close()
     return updated
 
+#------------------------BOOK.EXISTING_WORDS----------------------------
 def fill_existing_words(word):
     """
     Uses GPT to generate meaning, antonyms, synonyms, examples, transcription, and syllables for the given word,
     and inserts a new record into the existing_words table in book.db.
     """
-    DB_PATH = r"D:\Canada research\backend\db\book.db"
     info = generate_word_info(word)
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     cur.execute(
         "INSERT INTO existing_words (word, meaning, antonyms, synonyms, examples, transcription, syllables) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             word,
+            info.get("meaning", ""),
             info.get("antonyms", ""),
             info.get("synonyms", ""),
             ", ".join(info.get("examples", [])) if isinstance(info.get("examples", ""), list) else info.get("examples", ""),
@@ -192,9 +187,7 @@ def word_exists_in_existing_words(word):
     """
     if not word:
         return -1
-    import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     # Check if the table is empty
     cur.execute("SELECT COUNT(*) FROM existing_words")
@@ -207,6 +200,32 @@ def word_exists_in_existing_words(word):
     conn.close()
     return row[0] if row else -1
 
+
+def pull_existing_word(id = -1):
+    """
+    Checks if the given word exists in the existing_words table in book.db.
+    Returns the index (rowid) if it exists, -1 otherwise.
+    If the word is empty or None, or the table is empty, returns -1 immediately.
+    """
+    conn = sqlite3.connect(BOOK_DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM existing_words")
+    count = cur.fetchone()[0]
+    if count == 0:
+        conn.close()
+        return -1
+        
+    if id == -1:
+        cur.execute("SELECT * FROM existing_words")
+    else:
+        cur.execute("SELECT * FROM existing_words WHERE id = ? LIMIT 1", (id,))
+    info = cur.fetchone()
+    conn.close()
+    return info if info else 0
+
+
+
+#------------------------RESULTS.MISTAKES----------------------------
 def add_mistake(word, word_id):
     """
     Inserts a record into the mistakes table:
@@ -216,9 +235,7 @@ def add_mistake(word, word_id):
     4. pronounced_correctly (int, max 5, set to 0 at creation)
     Before inserting, checks if the mistakes table is not empty.
     """
-    import sqlite3
-    DB_PATH = r"D:\Canada research\backend\db\results.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(RESULT_DB_PATH)
     cur = conn.cursor()
     # Check if the mistakes table is not empty
     cur.execute("SELECT COUNT(*) FROM mistakes")
@@ -233,14 +250,49 @@ def add_mistake(word, word_id):
     conn.commit()
     conn.close()
 
+import sqlite3
 
+def get_mistakes_with_words():
+    conn = sqlite3.connect(RESULT_DB_PATH)
+    cur = conn.cursor()
+    conn.execute(f"ATTACH DATABASE '{BOOK_DB_PATH}' AS book")
+
+    query = """
+    SELECT 
+        m.word_index, 
+        m.pronounced_correctly, 
+        b.word, 
+        b.transcription, 
+        b.syllables
+    FROM mistakes m
+    JOIN book.existing_words b ON m.word_index = b.id
+    WHERE m.pronounced_correctly < 5
+    """
+    cur.execute(query)
+    results = cur.fetchall()
+
+    mistakes = []
+    print("results:", results)
+    for word_data in results:
+        mistakes.append({
+            "id": word_data[0],
+            "pronounced_correctly": word_data[1],
+            "word": word_data[2],
+            "ipa": word_data[3],
+            "segments": word_data[4].split("-") if word_data[4] else []
+        })
+
+    conn.close()
+    return mistakes
+
+
+#------------------------BOOK.FRAGMENTS----------------------------
 def get_fragment_by_id(fragment_id):
     """
     Returns the fragment record from the book_fragments table by the given fragment_id and book_id.
     Returns a dictionary with the fragment data or None if not found.
     """
-    DB_PATH = "db/book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     conn.row_factory = sqlite3.Row
     cur = conn.cursor()
     cur.execute("SELECT * FROM book_fragments WHERE fragment_id = ?", (fragment_id,))
@@ -257,8 +309,7 @@ def get_first_fragment_id(book_id):
     Returns the ID of the first fragment for the specified book from the book_fragments table.
     Returns None if no fragments are found for the book.
     """
-    DB_PATH = "db/book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT MIN(fragment_id) FROM book_fragments WHERE book_id = ?", (book_id,))
     row = cur.fetchone()
@@ -270,8 +321,7 @@ def get_last_fragment_id(book_id):
     Returns the ID of the last fragment for the specified book from the book_fragments table.
     Returns 0 if no fragments are found for the book.
     """
-    DB_PATH = "db/book.db"
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(BOOK_DB_PATH)
     cur = conn.cursor()
     cur.execute("SELECT MAX(fragment_id) FROM book_fragments WHERE book_id = ?", (book_id,))
     row = cur.fetchone()
