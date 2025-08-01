@@ -78,11 +78,14 @@ const PronunciationScreen = ({ navigation }) => {
                 throw new Error(`Server Error: ${response.status}`);
             }
             const data = await response.json();
-            const selectedWords = data.words.slice(0, 10); // Select first 10 words
+            console.log('Received pronunciation words data:', JSON.stringify(data, null, 2));
+            const selectedWords = data.words; 
+            console.log('Selected words:', JSON.stringify(selectedWords, null, 2));
             setWords(selectedWords);
 
             // Set initial segments for the first word
             if (selectedWords.length > 0) {
+                console.log('First word data:', JSON.stringify(selectedWords[0], null, 2));
                 setSegments(selectedWords[0].segments);
             }
         } catch (error) {
@@ -127,9 +130,9 @@ const PronunciationScreen = ({ navigation }) => {
 
     const handleNextWord = () => {
         if (currentIndex < words.length - 1) {
-            setCurrentIndex(currentIndex + 1);
             setFeedbackData(null);
-            setSegments(words[currentIndex + 1].segments); // Update segments for the next word
+            setSegments(words[currentIndex].segments); // Update segments for the next word
+            setCurrentIndex(currentIndex + 1);
         } else {
             Alert.alert('Great Job!', 'You have completed all the words.');
             // Optionally, reset or navigate away
@@ -144,9 +147,15 @@ const PronunciationScreen = ({ navigation }) => {
         );
     }
 
-    const currentWord = words[currentIndex]?.word;
-    const syllables = segments.length > 0 ? segments.join(' - ') : '';
-    const ipa = words[currentIndex]?.ipa || '/ipa/'; // Placeholder, update if available
+    // const currentWord = words[currentIndex]?.word;
+    // const syllables = segments.length > 0 ? segments.join(' - ') : '';
+    // const ipa = words[currentIndex]?.ipa || '/ipa/'; // Placeholder, update if available
+    const currentWordData = words[currentIndex] || {}; // Отримуємо поточний об'єкт слова або пустий об'єкт, якщо немає
+    const currentWord = currentWordData.word || ''; // Текст слова
+    const syllables = currentWordData.segments || ''; // Склади через дефіс
+    const ipa = currentWordData.ipa || '/ipa/'; // Транскрипція або значення за замовчуванням
+    const pronouncedCorrectly = currentWordData.pronounced_correctly || 0; // Рейтинг вимови
+    const wordId = currentWordData.id || null; // ID слова з БД
 
     return (
         <ImageBackground
@@ -185,9 +194,10 @@ const PronunciationScreen = ({ navigation }) => {
                     <TouchableOpacity style={[styles.actionButton, styles.playButton]} onPress={() => {}}>
                         <Text style={styles.actionButtonText}>PLAY</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={() => {}}>
+                    <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={handleNextWord}>
                         <Text style={[styles.actionButtonText, { color: '#fff' }]}>SEND</Text>
                     </TouchableOpacity>
+
                 </View>
             </View>
             {/* Pull-up menu handle and menu remain unchanged */}
