@@ -146,7 +146,6 @@ const PronunciationScreen = ({ navigation }) => {
             audioRecorderPlayer.removeRecordBackListener();
             setIsRecording(false);
             setHasRecording(true);
-            Alert.alert('Recording Stopped', 'Your pronunciation has been recorded.');
         } catch (error) {
             console.error('Failed to stop recording:', error);
             Alert.alert('Error', 'Failed to stop recording.');
@@ -324,8 +323,19 @@ const PronunciationScreen = ({ navigation }) => {
                             <Text style={styles.actionButtonText}>SEND</Text>
                         </TouchableOpacity>
                     ) : (
-                        <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={handleNextWord}>
-                            <Text style={styles.actionButtonText}>NEXT</Text>
+                        <TouchableOpacity 
+                            style={[
+                                styles.actionButton, 
+                                styles.sendButton,
+                                isRecording && styles.disabledButtonNext
+                            ]} 
+                            onPress={handleNextWord}
+                            disabled={isRecording}
+                        >
+                            <Text style={[
+                                styles.actionButtonText,
+                                isRecording && styles.disabledButtonText
+                            ]}>NEXT</Text>
                         </TouchableOpacity>
                     )}
                     
@@ -474,6 +484,10 @@ const styles = StyleSheet.create({
     },
     disabledButton: {
         backgroundColor: '#00a0cd',
+        opacity: 0.6,
+    },
+    disabledButtonNext: {
+        backgroundColor: 'rgb(188, 209, 117, 0.9)', 
         opacity: 0.6,
     },
     disabledButtonText: {
