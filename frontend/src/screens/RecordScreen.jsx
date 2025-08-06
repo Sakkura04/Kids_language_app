@@ -6,12 +6,6 @@ import { PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AudioRecorderComponent from '../components/AudioRecorder';
 
-const paragraphs = [
-  "Once upon a time, in a land far away, there lived a young princess who loved to explore the forests around her castle. She would spend hours wandering among the trees, listening to the birds sing and watching the squirrels play.",
-  "One sunny day, she found a small, sparkling stone on the ground. Curious, she picked it up and held it to the light. The stone began to glow, and suddenly, a tiny fairy appeared before her, thanking her for finding the lost magical gem.",
-  "The princess and the fairy became friends, and together they embarked on many adventures, discovering hidden treasures and learning the secrets of the enchanted forest."
-];
-
 const { width, height } = Dimensions.get('window');
 const MENU_CLOSED_Y = 45;
 const MENU_HEIGHT = height * 0.51;
