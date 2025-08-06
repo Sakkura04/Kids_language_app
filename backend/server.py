@@ -1,19 +1,16 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from predictor import WordComplexityPredictor
 from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
-from server_help import extract_missing_keywords_from_result, remove_digits_and_specials
+from server_help import extract_missing_keywords_from_result, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
 from db.gpt_api import generate_word_info
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
+from gtts import gTTS
 
 app = Flask(__name__)
 CORS(app)
-
-BEST_MODEL_NAME = "random_forest"
-predictor = WordComplexityPredictor(debug=True)
 selected_book_id = 1  # Default book ID
-
+BEST_MODEL_NAME = "random_forest"
 
 @app.route("/home", methods=["GET"])
 def home():
@@ -86,39 +83,7 @@ def process_recording():
 
 
 
-def process_audio_and_text(audio_base64, original_text, model_name):
-    # Assuming your transcription method can handle a stream
-    transcription = predictor.process_base64_audio(audio_base64)
 
-    # Levenshtein Distance
-    lev_distance = predictor.calculate_levenshtein_distance(
-        original_text, transcription
-    )
-
-    # Keyword Analysis
-    missed_keywords, new_keywords = predictor.keyword_analysis(
-        original_text, transcription
-    )
-
-    word_complexities = predictor.process_text_and_predict(
-        original_text, model_name=model_name
-    )
-    sentences = original_text.split(". ")
-    readability_metrics = {
-        sentence: predictor.calculate_readability_metrics(sentence)
-        for sentence in sentences
-        if sentence
-    }
-
-    response = {
-        "transcription": transcription,
-        "levenshtein_distance": lev_distance,
-        "missed_keywords": missed_keywords,
-        "new_keywords": new_keywords,
-        "word_complexities": word_complexities,
-        "readability_metrics": readability_metrics,
-    }
-    return response
 
 #-----------------PRONOUNCE SCREEN------------------
 @app.route("/get-pronunciation-words", methods=["GET"])
@@ -132,11 +97,33 @@ def analyze_pronunciation():
     try:
         data = request.get_json()
         audio_base64 = data.get("audio")
-        word = data.get("word")
+        word = clean_and_convert_numbers(data.get("word"))
+        print("Word:", word)
+        tts = tts_to_base64(word)
         
+
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
- 
+
+         # Process the audio data and displayed text
+        response_data = process_audio_and_text(audio_base64, word, BEST_MODEL_NAME)
+        result = response_data["levenshtein_distance"] / max(len(response_data["transcription"]), len(word))
+
+        response_data2 = process_audio_and_text(tts, word, BEST_MODEL_NAME)
+        result2 = response_data2["levenshtein_distance"] / max(len(response_data2["transcription"]), len(word))
+
+        print(f'result: {result}')
+        print(f'result2: {result2}')
+        if result < 0.3:
+            print('success')
+        if result2 < 0.3:
+            print('success2')
+
+        print(f'syllables: {split_on_hyphen(syllables_from_existing_words(word))}')
+        mock_feedback = generate_feedback(split_on_hyphen(syllables_from_existing_words(word)), [])
+        print(f'feedback {mock_feedback}')
+            
+
         #DOOOOOOOOOOOOOOOOOOOOOOOOOO
 
         # print(f"Analyzing pronunciation for word: {word}")
@@ -144,11 +131,11 @@ def analyze_pronunciation():
         # print(f"Analyzing pronunciation for word: {type(syllables_str)}")
         # print(f"Analyzing pronunciation for word: {syllables_str}")
         
-
-        mock_feedback = [
-            {"segment": "ap", "status": "correct"},
-            {"segment": "ple", "status": "incorrect"}
-        ]
+        
+        # mock_feedback = [
+        #     {"segment": "ap", "status": "correct"},
+        #     {"segment": "ple", "status": "incorrect"}
+        # ]
         
         response_data = {
             "transcription": f"User said: {word}",
