@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from predictor import WordComplexityPredictor
-from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
+from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
 from server_help import extract_missing_keywords_from_result, remove_digits_and_specials
 from db.gpt_api import generate_word_info
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
@@ -71,10 +71,10 @@ def process_recording():
             word_id = word_exists_in_existing_words(word)
             if word_id == -1:
                 fill_existing_words(word)
-            if check_word_mastery(word_id) is False:  
-                continue
-            
-            add_mistake(word, word_id)
+                if check_word_mastery(word_id) is True:
+                    continue
+                
+                add_mistake(word, word_id)
 
     # Check if this text-part was already read
     existing_id = find_text_record_by_read_part(displayed_text)
@@ -136,11 +136,15 @@ def analyze_pronunciation():
         
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
+ 
+        #DOOOOOOOOOOOOOOOOOOOOOOOOOO
+
+        # print(f"Analyzing pronunciation for word: {word}")
+        # syllables_str = '-'.join(syllables_from_existing_words(word))
+        # print(f"Analyzing pronunciation for word: {type(syllables_str)}")
+        # print(f"Analyzing pronunciation for word: {syllables_str}")
         
-        print(f"Analyzing pronunciation for word: {word}")
-        
-        # TODO: Implement actual pronunciation analysis
-        # For now, return mock data structure
+
         mock_feedback = [
             {"segment": "ap", "status": "correct"},
             {"segment": "ple", "status": "incorrect"}

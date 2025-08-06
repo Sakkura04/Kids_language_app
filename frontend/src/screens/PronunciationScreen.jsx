@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, TouchableOpacity, ImageBackground, Image } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Animated, PanResponder, Dimensions, TouchableOpacity, ImageBackground, Image, Platform } from 'react-native';
 import CustomAudioRecorder from '../components/CustomAudioRecorder.jsx';
 import PronunciationFeedbackModal from '../components/PronunciationFeedbackModal.jsx';
 import config from '../config';
 import { Button } from 'react-native-paper';
+import AudioRecorderPlayer from 'react-native-audio-recorder-player';
+import RNFS from 'react-native-fs';
+import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 const { height } = Dimensions.get('window');
 const MENU_CLOSED_Y = 45;
@@ -16,6 +19,8 @@ const MENU_ITEMS = [
   { label: 'Pronunciation', screen: 'Pronunciation' },
 ];
 
+const audioRecorderPlayer = new AudioRecorderPlayer();
+
 const PronunciationScreen = ({ navigation }) => {
     const [words, setWords] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -23,6 +28,11 @@ const PronunciationScreen = ({ navigation }) => {
     const [feedbackData, setFeedbackData] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
     const [segments, setSegments] = useState([]);
+    const [isRecording, setIsRecording] = useState(false);
+    const [recordedAudio, setRecordedAudio] = useState(null);
+    const [hasRecording, setHasRecording] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [recordedPath, setRecordedPath] = useState('');
 
     // Pull-up menu state
     const [menuOpen, setMenuOpen] = useState(false);
@@ -71,6 +81,14 @@ const PronunciationScreen = ({ navigation }) => {
         fetchPronunciationWords();
     }, []);
 
+    useEffect(() => {
+        const initPath = Platform.select({
+            ios: `${RNFS.DocumentDirectoryPath}/${currentWord}.m4a`,
+            android: `${RNFS.DocumentDirectoryPath}/${currentWord}.mp4`,
+        });
+        setRecordedPath(initPath);
+    }, [currentWord]);
+
     const fetchPronunciationWords = async () => {
         try {
             const response = await fetch(`${config.backendUrl}/get-pronunciation-words`);
@@ -78,14 +96,11 @@ const PronunciationScreen = ({ navigation }) => {
                 throw new Error(`Server Error: ${response.status}`);
             }
             const data = await response.json();
-            console.log('Received pronunciation words data:', JSON.stringify(data, null, 2));
             const selectedWords = data.words; 
-            console.log('Selected words:', JSON.stringify(selectedWords, null, 2));
             setWords(selectedWords);
 
             // Set initial segments for the first word
             if (selectedWords.length > 0) {
-                console.log('First word data:', JSON.stringify(selectedWords[0], null, 2));
                 setSegments(selectedWords[0].segments);
             }
         } catch (error) {
@@ -96,7 +111,102 @@ const PronunciationScreen = ({ navigation }) => {
         }
     };
 
+    const requestPermissionsHandler = async () => {
+        let permission = PERMISSIONS.ANDROID.RECORD_AUDIO;
+        if (Platform.OS === 'ios') {
+            permission = PERMISSIONS.IOS.MICROPHONE;
+        }
+
+        const result = await request(permission);
+        return result === RESULTS.GRANTED;
+    };
+
+    const handleStartRecording = async () => {
+        const hasPermission = await requestPermissionsHandler();
+        if (!hasPermission) {
+            Alert.alert('Permission Denied', 'Cannot record without microphone permission.');
+            return;
+        }
+
+        try {
+            const uri = await audioRecorderPlayer.startRecorder(recordedPath);
+            audioRecorderPlayer.addRecordBackListener((e) => {
+                return;
+            });
+            setIsRecording(true);
+        } catch (error) {
+            console.error('Failed to start recording:', error);
+            Alert.alert('Error', 'Failed to start recording.');
+        }
+    };
+
+    const handleStopRecording = async () => {
+        try {
+            const result = await audioRecorderPlayer.stopRecorder();
+            audioRecorderPlayer.removeRecordBackListener();
+            setIsRecording(false);
+            setHasRecording(true);
+            Alert.alert('Recording Stopped', 'Your pronunciation has been recorded.');
+        } catch (error) {
+            console.error('Failed to stop recording:', error);
+            Alert.alert('Error', 'Failed to stop recording.');
+        }
+    };
+
+    const handlePlayRecording = async () => {
+        if (!hasRecording) {
+            Alert.alert('No Recording', 'Please record a pronunciation first.');
+            return;
+        }
+        try {
+            const exists = await RNFS.exists(recordedPath);
+            if (!exists) {
+                Alert.alert('No Recording', 'Please record a pronunciation first.');
+                return;
+            }
+
+            setIsPlaying(true);
+            await audioRecorderPlayer.startPlayer(recordedPath);
+            audioRecorderPlayer.addPlayBackListener((e) => {
+                if (e.current_position === e.duration) {
+                    audioRecorderPlayer.stopPlayer();
+                    setIsPlaying(false);
+                }
+                return;
+            });
+        } catch (error) {
+            console.error('Failed to play recording:', error);
+            Alert.alert('Error', 'Failed to play recording.');
+            setIsPlaying(false);
+        }
+    };
+
+    const handleSendRecording = async () => {
+        if (!hasRecording) {
+            Alert.alert('No Recording', 'Please record a pronunciation first.');
+            return;
+        }
+        try {
+            const exists = await RNFS.exists(recordedPath);
+            if (!exists) {
+                Alert.alert('No Recording', 'Please record a pronunciation first.');
+                return;
+            }
+
+            const audioBase64 = await RNFS.readFile(recordedPath, 'base64');
+            handleRecordingComplete(audioBase64);
+        } catch (error) {
+            console.error('Failed to send recording:', error);
+            Alert.alert('Error', 'Failed to send recording.');
+        }
+    };
+
     const handleRecordingComplete = async (audioBase64) => {
+        setRecordedAudio(audioBase64);
+        setIsRecording(false);
+        setHasRecording(false);
+        
+        // Send to backend for analysis
         const currentWord = words[currentIndex];
         if (!currentWord) return;
 
@@ -133,9 +243,9 @@ const PronunciationScreen = ({ navigation }) => {
             setFeedbackData(null);
             setSegments(words[currentIndex].segments); // Update segments for the next word
             setCurrentIndex(currentIndex + 1);
+            setHasRecording(false); // Reset recording state for new word
         } else {
             Alert.alert('Great Job!', 'You have completed all the words.');
-            // Optionally, reset or navigate away
         }
     };
 
@@ -147,12 +257,11 @@ const PronunciationScreen = ({ navigation }) => {
         );
     }
 
-    // const currentWord = words[currentIndex]?.word;
-    // const syllables = segments.length > 0 ? segments.join(' - ') : '';
-    // const ipa = words[currentIndex]?.ipa || '/ipa/'; // Placeholder, update if available
     const currentWordData = words[currentIndex] || {}; // Отримуємо поточний об'єкт слова або пустий об'єкт, якщо немає
     const currentWord = currentWordData.word || ''; // Текст слова
-    const syllables = currentWordData.segments || ''; // Склади через дефіс
+    // const syllables = currentWordData.segments || ''; // Склади через дефіс
+    const syllables = (currentWordData.segments || []).join('-'); // Об'єднуємо масив через дефіс
+    console.log('Склади:', syllables); 
     const ipa = currentWordData.ipa || '/ipa/'; // Транскрипція або значення за замовчуванням
     const pronouncedCorrectly = currentWordData.pronounced_correctly || 0; // Рейтинг вимови
     const wordId = currentWordData.id || null; // ID слова з БД
@@ -165,7 +274,6 @@ const PronunciationScreen = ({ navigation }) => {
         >
             {/* Birds and speech bubbles placeholder */}
             <View style={styles.birdsRow}>
-                {/* Replace with actual images if available */}
                 <Image source={require('../../assets/images/pronunce_blue_bird.png')} style={styles.bird} />
                 <Image source={require('../../assets/images/pronunce_red_bird.png')} style={styles.bird} />
             </View>
@@ -188,18 +296,50 @@ const PronunciationScreen = ({ navigation }) => {
                 </View>
                 {/* Buttons row */}
                 <View style={styles.buttonRow}>
-                    <TouchableOpacity style={[styles.actionButton, styles.startButton]} onPress={() => {}}>
-                        <Text style={styles.actionButtonText}>START</Text>
+                    {!isRecording ? (
+                        <TouchableOpacity style={[styles.actionButton, styles.startButton]} onPress={handleStartRecording}>
+                            <Text style={styles.actionButtonText}>START</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={[styles.actionButton, styles.stopButton]} onPress={handleStopRecording}>
+                            <Text style={styles.actionButtonText}>STOP</Text>
+                        </TouchableOpacity>
+                    )}
+                    <TouchableOpacity 
+                        style={[
+                            styles.actionButton, 
+                            styles.playButton,
+                            !hasRecording && styles.disabledButton
+                        ]} 
+                        onPress={handlePlayRecording}
+                        disabled={!hasRecording}
+                    >
+                        <Text style={[
+                            styles.actionButtonText,
+                            !hasRecording && styles.disabledButtonText
+                        ]}>PLAY</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, styles.playButton]} onPress={() => {}}>
-                        <Text style={styles.actionButtonText}>PLAY</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={handleNextWord}>
-                        <Text style={[styles.actionButtonText, { color: '#fff' }]}>SEND</Text>
-                    </TouchableOpacity>
-
+                    {hasRecording ? (
+                        <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={handleSendRecording}>
+                            <Text style={styles.actionButtonText}>SEND</Text>
+                        </TouchableOpacity>
+                    ) : (
+                        <TouchableOpacity style={[styles.actionButton, styles.sendButton]} onPress={handleNextWord}>
+                            <Text style={styles.actionButtonText}>NEXT</Text>
+                        </TouchableOpacity>
+                    )}
+                    
+                    
                 </View>
             </View>
+            {/* Feedback modal */}
+            {feedbackData && (
+                <PronunciationFeedbackModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    feedbackData={feedbackData}
+                />
+            )}
             {/* Pull-up menu handle and menu remain unchanged */}
             <View style={styles.menuHandleBarContainer} pointerEvents={menuOpen ? 'none' : 'auto'}>
                 <View style={styles.menuHandleBar} />
@@ -328,6 +468,16 @@ const styles = StyleSheet.create({
         color: 'white',
         fontWeight: 'bold',
         textAlign: 'center',
+    },
+    stopButton: {
+        backgroundColor: '#FF0000',
+    },
+    disabledButton: {
+        backgroundColor: '#00a0cd',
+        opacity: 0.6,
+    },
+    disabledButtonText: {
+        color: 'white',
     },
     // Pull-up menu styles (copied from RecordScreen)
     menuHandleBarContainer: {

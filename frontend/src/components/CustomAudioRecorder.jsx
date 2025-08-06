@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Alert, Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import AudioRecorderPlayer from 'react-native-audio-recorder-player';
-import { Button } from 'react-native-paper';
 import RNFS from 'react-native-fs';
 import { request, PERMISSIONS, RESULTS } from 'react-native-permissions';
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
-const CustomAudioRecorder = ({ currentWord, onRecordingComplete }) => {
+const CustomAudioRecorder = ({ currentWord, onRecordingComplete, isVisible = false }) => {
     const [isRecording, setIsRecording] = useState(false);
     const [recordedPath, setRecordedPath] = useState('');
     const [isPlaying, setIsPlaying] = useState(false);
+    const [hasRecording, setHasRecording] = useState(false);
 
     useEffect(() => {
         const initPath = Platform.select({
@@ -30,45 +30,55 @@ const CustomAudioRecorder = ({ currentWord, onRecordingComplete }) => {
         return result === RESULTS.GRANTED;
     };
 
-    const onStartRecord = async () => {
+    const startRecording = async () => {
         const hasPermission = await requestPermissionsHandler();
         if (!hasPermission) {
             Alert.alert('Permission Denied', 'Cannot record without microphone permission.');
-            return;
+            return false;
         }
 
         try {
             const uri = await audioRecorderPlayer.startRecorder(recordedPath);
             audioRecorderPlayer.addRecordBackListener((e) => {
-                // Optionally, update UI with recording time
                 return;
             });
             setIsRecording(true);
+            return true;
         } catch (error) {
             console.error('Failed to start recording:', error);
             Alert.alert('Error', 'Failed to start recording.');
+            return false;
         }
     };
 
-    const onStopRecord = async () => {
+    const stopRecording = async () => {
         try {
             const result = await audioRecorderPlayer.stopRecorder();
             audioRecorderPlayer.removeRecordBackListener();
             setIsRecording(false);
+            setHasRecording(true);
             Alert.alert('Recording Stopped', 'Your pronunciation has been recorded.');
+            return true;
         } catch (error) {
             console.error('Failed to stop recording:', error);
             Alert.alert('Error', 'Failed to stop recording.');
+            return false;
         }
     };
 
-    const onPlayRecord = async () => {
-        if (!recordedPath) {
+    const playRecording = async () => {
+        if (!hasRecording || !recordedPath) {
             Alert.alert('No Recording', 'Please record a pronunciation first.');
-            return;
+            return false;
         }
 
         try {
+            const exists = await RNFS.exists(recordedPath);
+            if (!exists) {
+                Alert.alert('No Recording', 'Please record a pronunciation first.');
+                return false;
+            }
+
             setIsPlaying(true);
             await audioRecorderPlayer.startPlayer(recordedPath);
             audioRecorderPlayer.addPlayBackListener((e) => {
@@ -78,102 +88,57 @@ const CustomAudioRecorder = ({ currentWord, onRecordingComplete }) => {
                 }
                 return;
             });
+            return true;
         } catch (error) {
             console.error('Failed to play recording:', error);
             Alert.alert('Error', 'Failed to play recording.');
             setIsPlaying(false);
+            return false;
         }
     };
 
-    const onSendRecording = async () => {
+    const sendRecording = async () => {
+        if (!hasRecording || !recordedPath) {
+            Alert.alert('No Recording', 'Please record a pronunciation first.');
+            return false;
+        }
+
         try {
             const exists = await RNFS.exists(recordedPath);
             if (!exists) {
                 Alert.alert('No Recording', 'Please record a pronunciation first.');
-                return;
+                return false;
             }
 
             const audioBase64 = await RNFS.readFile(recordedPath, 'base64');
-
-            // Callback to parent component
             onRecordingComplete(audioBase64);
+            return true;
         } catch (error) {
             console.error('Failed to send recording:', error);
             Alert.alert('Error', 'Failed to send recording.');
+            return false;
         }
     };
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.wordLabel}>Pronounce: {currentWord}</Text>
-            <View style={styles.buttonContainer}>
-                {!isRecording ? (
-                    <TouchableOpacity style={styles.recordButton} onPress={onStartRecord}>
-                        <Text style={styles.buttonText}>Start Recording</Text>
-                    </TouchableOpacity>
-                ) : (
-                    <TouchableOpacity style={styles.stopButton} onPress={onStopRecord}>
-                        <Text style={styles.buttonText}>Stop Recording</Text>
-                    </TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.playButton} onPress={onPlayRecord} disabled={isRecording}>
-                    <Text style={styles.buttonText}>{isPlaying ? 'Playing...' : 'Play Recording'}</Text>
-                </TouchableOpacity>
-                <Button mode="contained" onPress={onSendRecording} style={styles.sendButton}>
-                    Send
-                </Button>
-            </View>
-        </View>
-    );
+    // Don't render anything if not visible
+    if (!isVisible) {
+        return null;
+    }
+
+    // Return null since we don't want to render any UI
+    return null;
 };
 
-const styles = StyleSheet.create({
-    container: {
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    wordLabel: {
-        fontSize: 20,
-        marginBottom: 10,
-    },
-    buttonContainer: {
-        flexDirection: 'column',
-        alignItems: 'center',
-    },
-    recordButton: {
-        backgroundColor: '#32CD32',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-        width: 200,
-        alignItems: 'center',
-    },
-    stopButton: {
-        backgroundColor: '#FF0000',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-        width: 200,
-        alignItems: 'center',
-    },
-    playButton: {
-        backgroundColor: '#1E90FF',
-        padding: 15,
-        borderRadius: 10,
-        marginBottom: 10,
-        width: 200,
-        alignItems: 'center',
-    },
-    sendButton: {
-        backgroundColor: '#FFA500',
-        padding: 15,
-        borderRadius: 5,
-        width: 200,
-    },
-    buttonText: {
-        color: 'white',
-        fontSize: 16,
-    },
-});
-
-export default CustomAudioRecorder;
+// Export the functions so they can be used externally
+export { CustomAudioRecorder };
+export const createAudioRecorder = () => {
+    return {
+        startRecording,
+        stopRecording,
+        playRecording,
+        sendRecording,
+        isRecording: () => isRecording,
+        hasRecording: () => hasRecording,
+        isPlaying: () => isPlaying
+    };
+};
