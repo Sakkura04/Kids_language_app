@@ -200,6 +200,26 @@ def word_exists_in_existing_words(word):
     conn.close()
     return row[0] if row else -1
 
+def syllables_from_existing_words(word):
+    """
+    Checks if the given word exists in the existing_words table in book.db.
+    Returns the index (rowid) if it exists, -1 otherwise.
+    If the word is empty or None, or the table is empty, returns -1 immediately.
+    """
+    if not word:
+        return -1
+    conn = sqlite3.connect(BOOK_DB_PATH)
+    cur = conn.cursor()
+    # Check if the table is empty
+    cur.execute("SELECT COUNT(*) FROM existing_words")
+    count = cur.fetchone()[0]
+    if count == 0:
+        conn.close()
+        return -1
+    cur.execute("SELECT syllables FROM existing_words WHERE word = ? LIMIT 1", (word,))
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else -1
 
 def get_random_meanings_except(excluded_meaning):
     conn = sqlite3.connect(BOOK_DB_PATH)
