@@ -1,11 +1,17 @@
 import sqlite3
 import string
-import re
+import os
 from num2words import num2words
 from predictor import WordComplexityPredictor
 from gtts import gTTS
 import base64
 from io import BytesIO
+from praatio import textgrid
+import re
+import subprocess
+from subprocess import CalledProcessError
+from pydub import AudioSegment
+
 
 predictor = WordComplexityPredictor(debug=True)
 
@@ -108,10 +114,12 @@ def generate_feedback(segments: list[str], incorrect_indices: list[int]) -> list
     return feedback
 
 
+#встановлює точний час початку і кінця кожної фонеми в записі
 def tts_to_base64(text, lang='en'):
     # Generate speech
     tts = gTTS(text, lang=lang)
-    tts.save(f'temp_audio.wav')
+    tts.save(f'{text}.wav')
+
     # Save to memory buffer
     buffer = BytesIO()
     tts.write_to_fp(buffer)
@@ -120,3 +128,36 @@ def tts_to_base64(text, lang='en'):
     # Encode to base64
     audio_base64 = base64.b64encode(buffer.read()).decode('utf-8')
     return audio_base64
+
+
+#розшифровує згенерований MFA для кожного аудіо файл .TextGrid, в якому містяться фонеми з точними таймінгами їх вимови.
+def get_phoneme_timings(textgrid_path: str):
+    tg = textgrid.openTextgrid(textgrid_path, includeEmptyIntervals=False)
+    phoneme_tier = tg.getTier("phones")  # витягуємо tier за назвою
+    return [(start, end, label) for start, end, label in phoneme_tier.entries]
+
+
+#встановлює точний час початку і кінця кожної фонеми в записі
+def run_mfa(audio_path: str, lab_path: str, output_dir: str):
+    command = [
+        "mfa", "align",
+        os.path.dirname(audio_path),
+        "english_us_arpa",
+        "english_mfa",
+        output_dir,
+        "--clean",
+        "--overwrite"
+    ]
+    print("Running MFA with command:", " ".join(command))
+    subprocess.run(command, check=True)
+
+
+def save_base64_wav(base64_str: str, file_path: str):
+    try:
+        audio_data = base64.b64decode(base64_str)
+        # Спробуємо автоматично визначити формат
+        audio = AudioSegment.from_file(BytesIO(audio_data))
+        audio.export(file_path, format="wav")
+    except Exception as e:
+        print(f"Error saving audio: {str(e)}")
+        raise

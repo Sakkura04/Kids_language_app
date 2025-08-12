@@ -6,6 +6,8 @@ from db.gpt_api import generate_word_info
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
 from gtts import gTTS
+import os
+from server_help import save_base64_wav, run_mfa, get_phoneme_timings, extract_missing_keywords_from_result, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
 
 app = Flask(__name__)
 CORS(app)
@@ -89,7 +91,6 @@ def process_recording():
 @app.route("/get-pronunciation-words", methods=["GET"])
 def get_mispronounced_words():
     words = get_mistakes_with_words()
-    print("words:", words) 
     return jsonify({"words": words})
 
 @app.route("/analyze-pronunciation", methods=["POST"])
@@ -98,58 +99,88 @@ def analyze_pronunciation():
         data = request.get_json()
         audio_base64 = data.get("audio")
         word = clean_and_convert_numbers(data.get("word"))
-        print("Word:", word)
-        tts = tts_to_base64(word)
-        
 
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
-
-         # Process the audio data and displayed text
-        response_data = process_audio_and_text(audio_base64, word, BEST_MODEL_NAME)
-        result = response_data["levenshtein_distance"] / max(len(response_data["transcription"]), len(word))
-
-        response_data2 = process_audio_and_text(tts, word, BEST_MODEL_NAME)
-        result2 = response_data2["levenshtein_distance"] / max(len(response_data2["transcription"]), len(word))
-
-        print(f'result: {result}')
-        print(f'result2: {result2}')
-        if result < 0.3:
-            print('success')
-        if result2 < 0.3:
-            print('success2')
-
-        print(f'syllables: {split_on_hyphen(syllables_from_existing_words(word))}')
-        mock_feedback = generate_feedback(split_on_hyphen(syllables_from_existing_words(word)), [])
-        print(f'feedback {mock_feedback}')
-            
-
-        #DOOOOOOOOOOOOOOOOOOOOOOOOOO
-
-        # print(f"Analyzing pronunciation for word: {word}")
-        # syllables_str = '-'.join(syllables_from_existing_words(word))
-        # print(f"Analyzing pronunciation for word: {type(syllables_str)}")
-        # print(f"Analyzing pronunciation for word: {syllables_str}")
         
-        
-        # mock_feedback = [
-        #     {"segment": "ap", "status": "correct"},
-        #     {"segment": "ple", "status": "incorrect"}
-        # ]
-        
+        # Перевірка даних
+        if not audio_base64 or not isinstance(audio_base64, str):
+            return jsonify({"error": "Invalid audio data"}), 400
+        if not word or not isinstance(word, str):
+            return jsonify({"error": "Invalid word"}), 400
+
+        print("Word:", word)
+
+        # Step 1: Save user audio/text to temp file
+        #user_id = str(uuid.uuid4())
+        user_id = 1
+        user_audio_path = f"temp/audio_user_{user_id}.wav"
+        user_lab_path = user_audio_path.replace(".wav", ".lab")
+        save_base64_wav(audio_base64, user_audio_path)
+        with open(user_lab_path, "w") as f:
+            f.write(word)
+
+        # Step 2: Generate correct TTS audio
+        tts_base64 = tts_to_base64(word)
+        print(tts_base64[:100])
+
+        tts_audio_path = f"temp/audio_tts_{user_id}.wav"
+        tts_lab_path = tts_audio_path.replace(".wav", ".lab")
+        save_base64_wav(tts_base64, tts_audio_path)
+        print(tts_base64[:100])
+        with open(tts_lab_path, "w") as f:
+            f.write(word)
+
+        # Step 3: Run MFA alignment
+        output_dir_user = f"temp/output_user_{user_id}"
+        output_dir_tts = f"temp/output_tts_{user_id}"
+        os.makedirs(output_dir_user, exist_ok=True)
+        os.makedirs(output_dir_tts, exist_ok=True)
+
+        run_mfa(user_audio_path, user_lab_path, output_dir_user)
+        run_mfa(tts_audio_path, tts_lab_path, output_dir_tts)
+
+        # Step 4: Extract phoneme timings (form path to mfa timing files)
+        print("output_dir_user:", output_dir_user)
+        print("os.path.basename(user_audio_path):", os.path.basename(user_audio_path))
+        print("output_dir_tts:", output_dir_tts)
+        print("os.path.basename(tts_audio_path):", os.path.basename(tts_audio_path))
+        user_phonemes = get_phoneme_timings(os.path.join(output_dir_user, os.path.basename(user_audio_path).replace(".wav", ".TextGrid")))
+        print("user_phonemes:", user_phonemes)
+        tts_phonemes = get_phoneme_timings(os.path.join(output_dir_tts, os.path.basename(tts_audio_path).replace(".wav", ".TextGrid")))
+        print("tts_phonemes:", tts_phonemes)
+
+        # Step 5: Compare phonemes and generate feedback
+        syllables = split_on_hyphen(syllables_from_existing_words(word))
+        print("syllables:", syllables)
+        feedback = generate_feedback(syllables, [])
+        print("feedback:", feedback)
+        # feedback = generate_feedback(syllables, user_phonemes, tts_phonemes)
+
+        audio_base64 = data.get("audio")
+        # Step 6: Build response
+
         response_data = {
             "transcription": f"User said: {word}",
-            "feedback": mock_feedback,
+            "feedback": feedback,
             "feedback_sentence": "Nice try! You had a few small mistakes.",
-            "correct_audio": "base64_audio_placeholder",  # TODO: Add actual correct pronunciation audio
+            "correct_audio": "tts_base64",  # TODO: Add actual correct pronunciation audio
             "segment_audios": {
                 "ap": "base64_audio_placeholder",
                 "ple": "base64_audio_placeholder"
             }
         }
-        
+
+        # response_data = {
+        #     "transcription": f"User said: {word}",
+        #     "feedback": feedback,
+        #     "feedback_sentence": "Nice try! Here's your phoneme-level feedback.",
+        #     "correct_audio": tts_base64,
+        #     "segment_audios": {}  # optional: generate per-syllable TTS if needed
+        # }
+
         return jsonify(response_data)
-        
+
     except Exception as e:
         print(f"Error in analyze_pronunciation: {str(e)}")
         return jsonify({"error": "Failed to analyze pronunciation"}), 500
