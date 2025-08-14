@@ -21,7 +21,7 @@ const MENU_ITEMS = [
 
 const audioRecorderPlayer = new AudioRecorderPlayer();
 
-const PronunciationScreen = ({ navigation }) => {
+const PronunciationScreen = ({ navigation, route }) => {
     const [words, setWords] = useState([]);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
@@ -80,6 +80,21 @@ const PronunciationScreen = ({ navigation }) => {
     useEffect(() => {
         fetchPronunciationWords();
     }, []);
+
+    // Handle feedback data from transition screen
+    useEffect(() => {
+        if (route.params?.showFeedback && route.params?.feedbackData) {
+            setFeedbackData(route.params.feedbackData);
+            setModalVisible(true);
+            setHasRecording(false); // Reset recording state
+            // Clear the route params to prevent showing modal again
+            navigation.setParams({ showFeedback: undefined, feedbackData: undefined });
+        } else if (route.params?.showFeedback === false) {
+            // Handle case when returning from transition screen without feedback (error case)
+            setHasRecording(false); // Reset recording state
+            navigation.setParams({ showFeedback: undefined, feedbackData: undefined });
+        }
+    }, [route.params, navigation]);
 
     useEffect(() => {
         const initPath = Platform.select({
@@ -193,49 +208,19 @@ const PronunciationScreen = ({ navigation }) => {
             }
 
             const audioBase64 = await RNFS.readFile(recordedPath, 'base64');
-            handleRecordingComplete(audioBase64);
+            
+            // Navigate to transition screen immediately after reading the audio
+            navigation.navigate('PronunciationTransition', { 
+                audioBase64: audioBase64,
+                currentWord: words[currentIndex]?.word || ''
+            });
         } catch (error) {
             console.error('Failed to send recording:', error);
             Alert.alert('Error', 'Failed to send recording.');
         }
     };
 
-    const handleRecordingComplete = async (audioBase64) => {
-        setRecordedAudio(audioBase64);
-        setIsRecording(false);
-        setHasRecording(false);
-        
-        // Send to backend for analysis
-        const currentWord = words[currentIndex];
-        if (!currentWord) return;
 
-        setIsLoading(true);
-        try {
-            const response = await fetch(`${config.backendUrl}/analyze-pronunciation`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    audio: audioBase64,
-                    word: currentWord.word,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`Server Error: ${response.status}`);
-            }
-
-            const responseData = await response.json();
-            setFeedbackData(responseData);
-            setModalVisible(true);
-        } catch (error) {
-            console.error('Error analyzing pronunciation:', error);
-            Alert.alert('Error', `Failed to analyze pronunciation: ${error.message}`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
 
     const handleNextWord = () => {
         if (currentIndex < words.length - 1) {
@@ -243,6 +228,8 @@ const PronunciationScreen = ({ navigation }) => {
             setSegments(words[currentIndex].segments); // Update segments for the next word
             setCurrentIndex(currentIndex + 1);
             setHasRecording(false); // Reset recording state for new word
+            // Clear any route params
+            navigation.setParams({ showFeedback: undefined, feedbackData: undefined });
         } else {
             Alert.alert('Great Job!', 'You have completed all the words.');
         }

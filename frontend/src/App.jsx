@@ -10,6 +10,7 @@ import ResultsScreen from './screens/ResultScreen';
 import VocabularyScreen from './screens/VocabularyScreen';
 import PronunciationScreen from './screens/PronunciationScreen';
 import TransitionScreen from './screens/TransitionScreen';
+import PronunciationTransitionScreen from './screens/PronunciationTransitionScreen';
 import OpeningScreen from './screens/OpeningScreen';
 import BookScreen from './screens/BookScreen';
 
@@ -74,6 +75,7 @@ const App = () => {
           <Stack.Screen name="Pronunciation" component={PronunciationScreen} />
           <Stack.Screen name="Book" component={BookScreen} />
           <Stack.Screen name="Transition" component={TransitionScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="PronunciationTransition" component={PronunciationTransitionScreen} options={{ headerShown: false }} />
         </Stack.Navigator>
       </NavigationContainer>
     </PaperProvider>
