@@ -6,11 +6,14 @@ from predictor import WordComplexityPredictor
 from gtts import gTTS
 import base64
 from io import BytesIO
-from praatio import textgrid
+from praatio import textgrid 
 import re
 import subprocess
 from subprocess import CalledProcessError
 from pydub import AudioSegment
+import librosa
+import numpy as np
+from librosa.sequence import dtw
 
 
 predictor = WordComplexityPredictor(debug=True)
@@ -106,11 +109,22 @@ def split_on_hyphen(s: str) -> list:
     parts = s.split('-')
     return parts
 
-def generate_feedback(segments: list[str], incorrect_indices: list[int]) -> list[dict]:
+def generate_feedback(syllables: list[str], segment_scores, threshold) -> list[dict]:
     feedback = []
-    for i, segment in enumerate(segments):
-        status = "incorrect" if i in incorrect_indices else "correct"
-        feedback.append({"segment": segment, "status": status})
+    segment_statuses = []
+        
+    for i, score in enumerate(segment_scores):
+        print(f"score {score}, threshold: {threshold}")
+        if score >= threshold:
+            segment_statuses="correct"
+            print(f"Segment {i} ({syllables[i]}): CORRECT (score: {score:.3f})")
+        else:
+            segment_statuses="incorrect"
+            print(f"Segment {i} ({syllables[i]}): INCORRECT (score: {score:.3f})")
+
+        feedback.append({"segment": syllables[i], "status": segment_statuses})
+        
+    print("segment_statuses", segment_statuses)
     return feedback
 
 
@@ -167,3 +181,128 @@ def save_syllables_to_txt(syllables, filename):
     with open(filename, "w", encoding="utf-8") as f:
         for syllable in syllables:
             f.write(syllable + "\n")
+
+
+def compare_audio(user_path, tts_path, segments=None, sr=16000, n_mfcc=13):
+    """
+    Порівнює два аудіо файли і повертає загальну схожість та схожість по сегментах.
+
+    Аргументи:
+    - user_path: шлях до аудіо користувача (WAV)
+    - tts_path: шлях до еталонного аудіо (WAV)
+    - sr: частота дискретизації (16 kHz), аудіо стають одномірними масивами амплітуд
+    - n_mfcc: кількість MFCC коефіцієнтів (за замовчуванням 13) MFCC описує спектральну структуру звуку, наближено як людське вухо сприймає тон.
+    - segments: список таймкодів для складів/фонем у форматі [(start_user, end_user, start_tts, end_tts), ...]
+
+    Повертає:
+    - similarity: глобальна схожість двох аудіо (0..1)
+    - segment_scores: список схожостей по сегментах (якщо segments задано)
+    """
+
+    user_audio, sr_user = librosa.load(user_path, sr=sr)
+    tts_audio, sr_tts = librosa.load(tts_path, sr=sr)
+
+    # Обчислюємо MFCC для глобального порівняння з адаптивним n_fft
+    # Адаптуємо розмір FFT вікна до довжини сигналу
+    n_fft_user_global = min(2048, max(256, len(user_audio)))
+    n_fft_tts_global = min(2048, max(256, len(tts_audio)))
+    
+    # Переконаємося, що n_fft є степенем 2 (оптимально для FFT)
+    n_fft_user_global = 2 ** int(np.log2(n_fft_user_global))
+    n_fft_tts_global = 2 ** int(np.log2(n_fft_tts_global))
+    
+    mfcc_user = librosa.feature.mfcc(y=user_audio, sr=sr_user, n_mfcc=n_mfcc, n_fft=n_fft_user_global)
+    mfcc_tts = librosa.feature.mfcc(y=tts_audio, sr=sr_tts, n_mfcc=n_mfcc, n_fft=n_fft_tts_global)
+
+    # Переконаємося, що MFCC мають правильну розмірність для DTW
+    # DTW очікує (features, time), тому транспонуємо MFCC
+    if mfcc_user.ndim == 1:
+        mfcc_user = mfcc_user.reshape(1, -1)
+    if mfcc_tts.ndim == 1:
+        mfcc_tts = mfcc_tts.reshape(1, -1)
+
+    # DTW дозволяє порівнювати аудіо різної довжини і швидкості.
+    # Транспонуємо MFCC щоб отримати (features, time) формат
+    D, wp = dtw(mfcc_user, mfcc_tts, metric='euclidean')
+
+    # Обчислюємо глобальну схожість
+    distance = D[-1, -1]
+    similarity = 1 / (1 + distance)
+
+    segment_scores = []
+
+    # Якщо передані сегменти (таймкоди), обчислюємо локальну схожість по них
+    if segments:
+        for start_user, end_user, start_tts, end_tts in segments:
+            # Вирізаємо сегменти
+            user_seg = user_audio[int(start_user*sr_user):int(end_user*sr_user)]
+            tts_seg = tts_audio[int(start_tts*sr_tts):int(end_tts*sr_tts)]
+
+            # Перевіряємо, чи сегменти не порожні
+            if len(user_seg) == 0 or len(tts_seg) == 0:
+                segment_scores.append(0.0)
+                continue
+
+            # Обчислюємо MFCC для сегментів з адаптивним n_fft
+            # Адаптуємо розмір FFT вікна до довжини сигналу
+            n_fft_user = min(2048, max(256, len(user_seg)))
+            n_fft_tts = min(2048, max(256, len(tts_seg)))
+            
+            # Переконаємося, що n_fft є степенем 2 (оптимально для FFT)
+            n_fft_user = 2 ** int(np.log2(n_fft_user))
+            n_fft_tts = 2 ** int(np.log2(n_fft_tts))
+            
+            mfcc_user_seg = librosa.feature.mfcc(y=user_seg, sr=sr_user, n_mfcc=n_mfcc, n_fft=n_fft_user)
+            mfcc_tts_seg = librosa.feature.mfcc(y=tts_seg, sr=sr_tts, n_mfcc=n_mfcc, n_fft=n_fft_tts)
+
+            # Переконаємося, що MFCC мають правильну розмірність для DTW
+            # MFCC має бути (features, time) для DTW
+            if mfcc_user_seg.ndim == 1:
+                mfcc_user_seg = mfcc_user_seg.reshape(1, -1)
+            if mfcc_tts_seg.ndim == 1:
+                mfcc_tts_seg = mfcc_tts_seg.reshape(1, -1)
+
+            # Перевіряємо, чи є достатньо часових кадрів для DTW
+            if mfcc_user_seg.shape[1] < 2 or mfcc_tts_seg.shape[1] < 2:
+                # Якщо замало кадрів, використовуємо просте порівняння
+                segment_score = 0.5  # Нейтральна оцінка
+            else:
+                try:
+                    # Виконуємо DTW на сегментах
+                    D_seg, _ = dtw(mfcc_user_seg, mfcc_tts_seg, metric='euclidean')
+                    segment_score = 1 / (1 + D_seg[-1, -1])
+                except Exception as e:
+                    print(f"DTW error for segment: {e}")
+                    segment_score = 0.0
+
+            segment_scores.append(segment_score)
+
+    return similarity, segment_scores
+
+
+def create_segments(user_phonemes, tts_phonemes, syllables):
+    """
+    Перетворює таймкоди користувача та TTS у список сегментів для функції порівняння аудіо.
+    
+    Аргументи:
+    user_phonemes: list of tuples (start_user, end_user, 'phoneme')
+    tts_phonemes: list of tuples (start_tts, end_tts, 'phoneme')
+    syllables: list of складів (str)
+    
+    Повертає:
+    segments: list of tuples (start_user, end_user, start_tts, end_tts)
+    """
+    segments = []
+
+    if len(user_phonemes) != len(tts_phonemes) or len(user_phonemes) != len(syllables):
+        return []
+    # беремо мінімальну кількість складів серед user і TTS
+    num_syllables = len(user_phonemes)
+
+    for i in range(num_syllables):
+        start_user, end_user, _ = user_phonemes[i]
+        start_tts, end_tts, _ = tts_phonemes[i]
+
+        segments.append((start_user, end_user, start_tts, end_tts))
+
+    return segments

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
-from server_help import save_word_letters_to_txt, extract_missing_keywords_from_result, save_syllables_to_txt, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
+from server_help import create_segments, compare_audio, extract_missing_keywords_from_result, save_syllables_to_txt, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
 from db.gpt_api import generate_word_info
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
@@ -100,6 +100,8 @@ def analyze_pronunciation():
         audio_base64 = data.get("audio")
         word = clean_and_convert_numbers(data.get("word"))
         syllables = split_on_hyphen(syllables_from_existing_words(word))
+        # Оптимальний поріг: 0.3 (30%) - склад вважається правильним, якщо схожість >= 30%
+        CORRECT_THRESHOLD = 0.0003
 
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
@@ -124,14 +126,10 @@ def analyze_pronunciation():
         tts_base64 = tts_to_base64(word)
         tts_audio_path = f"temp/audio_tts_{user_id}.wav"
         tts_lab_path = tts_audio_path.replace(".wav", ".lab")
-        #######
         save_syllables_to_txt(syllables, tts_lab_path)
 
         #декодує base64 в wav
         save_base64_wav(tts_base64, tts_audio_path)
-
-        # with open(tts_lab_path, "w") as f:
-        #     f.write(word)
 
         output_dir_user = f"temp/output_user_{user_id}"
         output_dir_tts = f"temp/output_tts_{user_id}"
@@ -152,34 +150,57 @@ def analyze_pronunciation():
         tts_phonemes = get_phoneme_timings(os.path.join(output_dir_tts, os.path.basename(tts_audio_path).replace(".wav", ".TextGrid")))
         print("tts_phonemes:", tts_phonemes)
 
+        segments = create_segments(user_phonemes, tts_phonemes, syllables)
+        print("segments:", segments)
+        similarity, segment_scores = compare_audio(user_audio_path, tts_audio_path, segments=segments, sr=16000, n_mfcc=13)
+        
+
+        print("similarity:", similarity)
+        print("segment_scores:", segment_scores)
+
         # Step 5: Compare phonemes and generate feedback
         print("syllables:", syllables)
-        feedback = generate_feedback(syllables, [])
+        
+        # Визначаємо статус кожного складу на основі оцінки схожості
+        feedback = generate_feedback(syllables, segment_scores, CORRECT_THRESHOLD)
         print("feedback:", feedback)
-        # feedback = generate_feedback(syllables, user_phonemes, tts_phonemes)
 
         audio_base64 = data.get("audio")
         # Step 6: Build response
+        
+        # Генеруємо динамічне feedback_sentence на основі результатів
+        correct_count = sum(1 for _, status in feedback if status == "correct")
+        total_segments = len(feedback)
+        
+        if correct_count == total_segments:
+            feedback_sentence = "Excellent pronunciation! All syllables are correct."
+        elif correct_count >= total_segments * 0.5:  # 70% або більше правильних
+            feedback_sentence = "Great job! Most syllables are pronounced correctly."
+        elif correct_count >= total_segments * 0.2:  # 40% або більше правильних
+            feedback_sentence = "Good effort! Some syllables need improvement."
+        else:
+            feedback_sentence = "Keep practicing! Focus on pronunciation of each syllable."
+        
+        print (f"feedback_sentence: {feedback_sentence}")
 
         response_data = {
             "transcription": f"User said: {word}",
             "feedback": feedback,
-            "feedback_sentence": "Nice try! You had a few small mistakes.",
+            "feedback_sentence": "feedback_sentence",
             "correct_audio": "tts_base64",  # TODO: Add actual correct pronunciation audio
             "segment_audios": {
                 "ap": "base64_audio_placeholder",
                 "ple": "base64_audio_placeholder"
+            },
+            "pronunciation_analysis": {
+                "overall_similarity": round(similarity, 4),
+                # "segment_scores": [round(score, 4) for score in segment_scores],
+                # "correct_threshold": CORRECT_THRESHOLD,
+                # "correct_segments": correct_count,
+                # "total_segments": total_segments,
+                # "accuracy_percentage": round((correct_count / total_segments) * 100, 1)
             }
         }
-
-        # response_data = {
-        #     "transcription": f"User said: {word}",
-        #     "feedback": feedback,
-        #     "feedback_sentence": "Nice try! Here's your phoneme-level feedback.",
-        #     "correct_audio": tts_base64,
-        #     "segment_audios": {}  # optional: generate per-syllable TTS if needed
-        # }
-
         return jsonify(response_data)
 
     except Exception as e:
