@@ -161,3 +161,9 @@ def save_base64_wav(base64_str: str, file_path: str):
     except Exception as e:
         print(f"Error saving audio: {str(e)}")
         raise
+
+
+def save_syllables_to_txt(syllables, filename):
+    with open(filename, "w", encoding="utf-8") as f:
+        for syllable in syllables:
+            f.write(syllable + "\n")

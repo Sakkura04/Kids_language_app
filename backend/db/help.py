@@ -175,9 +175,10 @@ def fill_existing_words(word):
             info.get("syllables", "")
         )
     )
+    new_id = cur.lastrowid  # Отримуємо ID вставленого рядка
     conn.commit()
     conn.close()
-    return True
+    return new_id
 
 def word_exists_in_existing_words(word):
     """

@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
-from server_help import extract_missing_keywords_from_result, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
+from server_help import save_word_letters_to_txt, extract_missing_keywords_from_result, save_syllables_to_txt, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
 from db.gpt_api import generate_word_info
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
@@ -69,11 +69,11 @@ def process_recording():
             print(f"Word: {word}")
             word_id = word_exists_in_existing_words(word)
             if word_id == -1:
-                fill_existing_words(word)
-                if check_word_mastery(word_id) is True:
+                word_id = fill_existing_words(word)
+            elif check_word_mastery(word_id) is True:
                     continue
                 
-                add_mistake(word, word_id)
+            add_mistake(word, word_id)
 
     # Check if this text-part was already read
     existing_id = find_text_record_by_read_part(displayed_text)
@@ -99,6 +99,7 @@ def analyze_pronunciation():
         data = request.get_json()
         audio_base64 = data.get("audio")
         word = clean_and_convert_numbers(data.get("word"))
+        syllables = split_on_hyphen(syllables_from_existing_words(word))
 
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
@@ -117,26 +118,27 @@ def analyze_pronunciation():
         user_audio_path = f"temp/audio_user_{user_id}.wav"
         user_lab_path = user_audio_path.replace(".wav", ".lab")
         save_base64_wav(audio_base64, user_audio_path)
-        with open(user_lab_path, "w") as f:
-            f.write(word)
+        save_syllables_to_txt(syllables, user_lab_path)
 
         # Step 2: Generate correct TTS audio
         tts_base64 = tts_to_base64(word)
-        print(tts_base64[:100])
-
         tts_audio_path = f"temp/audio_tts_{user_id}.wav"
         tts_lab_path = tts_audio_path.replace(".wav", ".lab")
-        save_base64_wav(tts_base64, tts_audio_path)
-        print(tts_base64[:100])
-        with open(tts_lab_path, "w") as f:
-            f.write(word)
+        #######
+        save_syllables_to_txt(syllables, tts_lab_path)
 
-        # Step 3: Run MFA alignment
+        #декодує base64 в wav
+        save_base64_wav(tts_base64, tts_audio_path)
+
+        # with open(tts_lab_path, "w") as f:
+        #     f.write(word)
+
         output_dir_user = f"temp/output_user_{user_id}"
         output_dir_tts = f"temp/output_tts_{user_id}"
         os.makedirs(output_dir_user, exist_ok=True)
         os.makedirs(output_dir_tts, exist_ok=True)
 
+        # Step 3: Run MFA alignment
         run_mfa(user_audio_path, user_lab_path, output_dir_user)
         run_mfa(tts_audio_path, tts_lab_path, output_dir_tts)
 
@@ -151,7 +153,6 @@ def analyze_pronunciation():
         print("tts_phonemes:", tts_phonemes)
 
         # Step 5: Compare phonemes and generate feedback
-        syllables = split_on_hyphen(syllables_from_existing_words(word))
         print("syllables:", syllables)
         feedback = generate_feedback(syllables, [])
         print("feedback:", feedback)
