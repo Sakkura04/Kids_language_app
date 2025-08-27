@@ -285,6 +285,24 @@ def get_words_vocabulary():
     conn.close()
     return vocab
 
+
+def get_word_transcription(word: str) -> str | None:
+    """
+    Повертає транскрипцію слова з бази даних.
+    Якщо слово не знайдено, повертає None.
+    """
+    conn = sqlite3.connect(BOOK_DB_PATH)
+    cur = conn.cursor()
+
+    cur.execute("SELECT transcription FROM existing_words WHERE word = ?", (word,))
+    result = cur.fetchone()
+
+    conn.close()
+
+    if result:
+        return result[0]  # транскрипція
+    return None
+
 #------------------------RESULTS.MISTAKES----------------------------
 def add_mistake(word, word_id):
     """

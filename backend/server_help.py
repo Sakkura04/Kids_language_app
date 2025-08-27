@@ -1,4 +1,3 @@
-import sqlite3
 import string
 import os
 from num2words import num2words
@@ -14,6 +13,7 @@ from pydub import AudioSegment
 import librosa
 import numpy as np
 from librosa.sequence import dtw
+import glob
 
 
 predictor = WordComplexityPredictor(debug=True)
@@ -111,20 +111,19 @@ def split_on_hyphen(s: str) -> list:
 
 def generate_feedback(syllables: list[str], segment_scores, threshold) -> list[dict]:
     feedback = []
-    segment_statuses = []
         
     for i, score in enumerate(segment_scores):
         print(f"score {score}, threshold: {threshold}")
         if score >= threshold:
-            segment_statuses="correct"
+            segment_status = "correct"
             print(f"Segment {i} ({syllables[i]}): CORRECT (score: {score:.3f})")
         else:
-            segment_statuses="incorrect"
+            segment_status = "incorrect"
             print(f"Segment {i} ({syllables[i]}): INCORRECT (score: {score:.3f})")
 
-        feedback.append({"segment": syllables[i], "status": segment_statuses})
+        feedback.append({"segment": syllables[i], "status": segment_status})
         
-    print("segment_statuses", segment_statuses)
+    print("Generated feedback:", feedback)
     return feedback
 
 
@@ -177,26 +176,31 @@ def save_base64_wav(base64_str: str, file_path: str):
         raise
 
 
+
 def save_syllables_to_txt(syllables, filename):
     with open(filename, "w", encoding="utf-8") as f:
+        print("syllables: ", syllables)
         for syllable in syllables:
+            print("syllable: ", syllable)
             f.write(syllable + "\n")
 
 
-def compare_audio(user_path, tts_path, segments=None, sr=16000, n_mfcc=13):
+def compare_audio(user_path, tts_path, segments=None, sr=16000, n_mfcc=13, single_syllable_threshold=0.0003, multi_syllable_threshold=0.0004):
     """
     Порівнює два аудіо файли і повертає загальну схожість та схожість по сегментах.
-
     Аргументи:
     - user_path: шлях до аудіо користувача (WAV)
     - tts_path: шлях до еталонного аудіо (WAV)
     - sr: частота дискретизації (16 kHz), аудіо стають одномірними масивами амплітуд
     - n_mfcc: кількість MFCC коефіцієнтів (за замовчуванням 13) MFCC описує спектральну структуру звуку, наближено як людське вухо сприймає тон.
     - segments: список таймкодів для складів/фонем у форматі [(start_user, end_user, start_tts, end_tts), ...]
+    - single_syllable_threshold: поріг для слів з одним складом (за замовчуванням 0.0003)
+    - multi_syllable_threshold: поріг для слів з більше ніж одним складом (за замовчуванням 0.0004)
 
     Повертає:
     - similarity: глобальна схожість двох аудіо (0..1)
     - segment_scores: список схожостей по сегментах (якщо segments задано)
+    - threshold_used: поріг, який був використаний для аналізу
     """
 
     user_audio, sr_user = librosa.load(user_path, sr=sr)
@@ -228,6 +232,14 @@ def compare_audio(user_path, tts_path, segments=None, sr=16000, n_mfcc=13):
     # Обчислюємо глобальну схожість
     distance = D[-1, -1]
     similarity = 1 / (1 + distance)
+
+    # Визначаємо який поріг використовувати залежно від кількості сегментів
+    if segments and len(segments) == 1:
+        threshold_used = single_syllable_threshold
+    elif segments and len(segments) > 1:
+        threshold_used = multi_syllable_threshold
+    else:
+        threshold_used = multi_syllable_threshold  # за замовчуванням
 
     segment_scores = []
 
@@ -277,7 +289,9 @@ def compare_audio(user_path, tts_path, segments=None, sr=16000, n_mfcc=13):
 
             segment_scores.append(segment_score)
 
-    return similarity, segment_scores
+    return similarity, segment_scores, threshold_used
+
+
 
 
 def create_segments(user_phonemes, tts_phonemes, syllables):
@@ -306,3 +320,35 @@ def create_segments(user_phonemes, tts_phonemes, syllables):
         segments.append((start_user, end_user, start_tts, end_tts))
 
     return segments
+
+
+
+def cut_audio_by_timestamps(audio_path, phonemes, output_dir):
+    """
+    Ріже аудіо за списком фонем (у секундах) і зберігає шматки як syll1.wav, syll2.wav, ...
+    
+    :param audio_path: шлях до вихідного аудіофайлу (наприклад, "input.wav")
+    :param phonemes: список кортежів [(start_sec, end_sec, label), ...] у секундах
+    :param output_dir: шлях до папки для збереження (без назви файлу)
+    """
+    
+    # Конвертуємо секунди в мілісекунди і відкидаємо label
+    timestamps = [(int(start * 1000), int(end * 1000)) for start, end, _ in phonemes]
+    
+    # Створюємо папку, якщо її немає
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Видаляємо всі старі syll*.wav
+    for old_file in glob.glob(os.path.join(output_dir, "syll*.wav")):
+        os.remove(old_file)
+    
+    # Завантажуємо аудіо
+    audio = AudioSegment.from_file(audio_path)
+    
+    # Ріжемо і зберігаємо
+    for i, (start_ms, end_ms) in enumerate(timestamps, start=1):
+        chunk = audio[start_ms:end_ms]
+        output_path = os.path.join(output_dir, f"syll{i}.wav")
+        chunk.export(output_path, format="wav")
+        print(f"Збережено: {output_path}")
+

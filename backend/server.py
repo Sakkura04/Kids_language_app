@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from db.help import add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
-from server_help import create_segments, compare_audio, extract_missing_keywords_from_result, save_syllables_to_txt, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
-from db.gpt_api import generate_word_info
+from db.help import get_word_transcription, add_result_text_record,find_text_record_by_read_part, update_text_record_by_read_part, syllables_from_existing_words, check_word_mastery, get_words_vocabulary, get_mistakes_with_words, increase_recognition
+from server_help import cut_audio_by_timestamps, create_segments, compare_audio, extract_missing_keywords_from_result, save_syllables_to_txt, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
+from db.gpt_api import split_transcription_into_phonemes
 from db.help import fill_existing_words, word_exists_in_existing_words, add_mistake, get_fragment_by_id, get_first_fragment_id, get_last_fragment_id, get_random_meanings_except
 import sqlite3
 from gtts import gTTS
 import os
+import base64
 from server_help import save_base64_wav, run_mfa, get_phoneme_timings, extract_missing_keywords_from_result, tts_to_base64, generate_feedback, split_on_hyphen, remove_digits_and_specials, clean_and_convert_numbers, process_audio_and_text
 
 app = Flask(__name__)
@@ -99,9 +100,9 @@ def analyze_pronunciation():
         data = request.get_json()
         audio_base64 = data.get("audio")
         word = clean_and_convert_numbers(data.get("word"))
-        syllables = split_on_hyphen(syllables_from_existing_words(word))
-        # Оптимальний поріг: 0.3 (30%) - склад вважається правильним, якщо схожість >= 30%
-        CORRECT_THRESHOLD = 0.0003
+        # syllables = split_on_hyphen(syllables_from_existing_words(word))
+        syllables = split_transcription_into_phonemes( get_word_transcription(word).replace("/", "").replace("\\", ""))
+
 
         if not audio_base64 or not word:
             return jsonify({"error": "Missing audio or word data"}), 400
@@ -113,6 +114,9 @@ def analyze_pronunciation():
             return jsonify({"error": "Invalid word"}), 400
 
         print("Word:", word)
+        print("transcript:", get_word_transcription(word).replace("/", "").replace("\\", ""))
+        print("phonemas:", syllables)
+        print("\n\n")
 
         # Step 1: Save user audio/text to temp file
         #user_id = str(uuid.uuid4())
@@ -152,18 +156,22 @@ def analyze_pronunciation():
 
         segments = create_segments(user_phonemes, tts_phonemes, syllables)
         print("segments:", segments)
-        similarity, segment_scores = compare_audio(user_audio_path, tts_audio_path, segments=segments, sr=16000, n_mfcc=13)
-        
+        similarity, segment_scores, threshold_used = compare_audio(user_audio_path, tts_audio_path, segments=segments, sr=16000, n_mfcc=13)
+        # Приклад використання
+        cut_audio_by_timestamps(tts_audio_path, tts_phonemes, "temp/correct_syllables")
 
+
+        # textgrid_user="temp/output_user_1/audio_user_1.TextGrid",
+        # textgrid_tts="temp/output_tts_1/audio_tts_1.TextGrid"
+        # similarity, segment_scores = compare_audio(user_audio_path, tts_audio_path, segments=segments, sr=16000, n_mfcc=13, textgrid_user=textgrid_user, textgrid_tts=textgrid_tts )
+        
         print("similarity:", similarity)
         print("segment_scores:", segment_scores)
-
-        # Step 5: Compare phonemes and generate feedback
-        print("syllables:", syllables)
         
         # Визначаємо статус кожного складу на основі оцінки схожості
-        feedback = generate_feedback(syllables, segment_scores, CORRECT_THRESHOLD)
+        feedback = generate_feedback(syllables, segment_scores, threshold_used)
         print("feedback:", feedback)
+        print("threshold used:", threshold_used)
 
         audio_base64 = data.get("audio")
         # Step 6: Build response
@@ -194,11 +202,10 @@ def analyze_pronunciation():
             },
             "pronunciation_analysis": {
                 "overall_similarity": round(similarity, 4),
-                # "segment_scores": [round(score, 4) for score in segment_scores],
-                # "correct_threshold": CORRECT_THRESHOLD,
-                # "correct_segments": correct_count,
-                # "total_segments": total_segments,
-                # "accuracy_percentage": round((correct_count / total_segments) * 100, 1)
+                "threshold_used": round(threshold_used, 6),
+                "correct_segments": correct_count,
+                "total_segments": total_segments,
+                "accuracy_percentage": round((correct_count / total_segments) * 100, 1)
             }
         }
         return jsonify(response_data)
@@ -206,6 +213,27 @@ def analyze_pronunciation():
     except Exception as e:
         print(f"Error in analyze_pronunciation: {str(e)}")
         return jsonify({"error": "Failed to analyze pronunciation"}), 500
+
+@app.route("/get-correct-syllable-audio/<int:syllable_number>", methods=["GET"])
+def get_correct_syllable_audio(syllable_number):
+    try:
+        # Construct the path to the correct syllable audio file
+        audio_file_path = f"temp/correct_syllables/syll{syllable_number}.wav"
+        
+        # Check if the file exists
+        if not os.path.exists(audio_file_path):
+            return jsonify({"error": f"Audio file syll{syllable_number}.wav not found"}), 404
+        
+        # Read the audio file and convert to base64
+        with open(audio_file_path, "rb") as audio_file:
+            audio_data = audio_file.read()
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+        
+        return jsonify({"audio": audio_base64})
+        
+    except Exception as e:
+        print(f"Error in get_correct_syllable_audio: {str(e)}")
+        return jsonify({"error": "Failed to get syllable audio"}), 500
 
 #-----------------VOCABULARY SCREEN------------------
 @app.route("/get-vocabulary-words", methods=["GET"])
