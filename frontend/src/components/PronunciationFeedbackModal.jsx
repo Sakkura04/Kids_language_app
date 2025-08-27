@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, Modal, ScrollView, TouchableOpacity, StyleSheet, Alert, ImageBackground } from 'react-native';
+import { View, Text, Modal, ScrollView, TouchableOpacity, StyleSheet, Alert, ImageBackground, Image } from 'react-native';
 import { Button } from 'react-native-paper';
 import RNFS from 'react-native-fs';
 import Sound from 'react-native-sound';
+import config from '../config';
 
 const PronunciationFeedbackModal = ({ visible, onClose, feedbackData }) => {
     const { transcription, feedback, feedback_sentence, correct_audio, segment_audios } = feedbackData;
@@ -27,6 +28,26 @@ const PronunciationFeedbackModal = ({ visible, onClose, feedbackData }) => {
         } catch (error) {
             console.error('Error playing audio:', error);
             Alert.alert('Error', 'Failed to play audio.');
+        }
+    };
+
+    const playCorrectSyllableAudio = async (syllableIndex) => {
+        try {
+            // Fetch the correct syllable audio from the backend
+            const response = await fetch(`${config.backendUrl}/get-correct-syllable-audio/${syllableIndex + 1}`);
+            
+            if (!response.ok) {
+                throw new Error(`Server Error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // Play the audio using the existing playAudio function
+            await playAudio(data.audio);
+            
+        } catch (error) {
+            console.error('Error playing correct syllable audio:', error);
+            Alert.alert('Error', 'Failed to play correct syllable audio.');
         }
     };
 
@@ -89,7 +110,7 @@ const PronunciationFeedbackModal = ({ visible, onClose, feedbackData }) => {
                                 </Text>
                                 
                                 <TouchableOpacity
-                                    onPress={() => playAudio(segment_audios[item.segment])}
+                                    onPress={() => playCorrectSyllableAudio(index)}
                                 >
                                 <ImageBackground
                                     source={require('../../assets/images/headphones.png')}
