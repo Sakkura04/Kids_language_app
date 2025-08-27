@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ImageBackground, Animated, Pa
 import { useNavigation } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
 import { ScrollView} from 'react-native';
+import config from '../config';
 
 const { width, height } = Dimensions.get('window');
 const MENU_CLOSED_Y = 45;
@@ -30,7 +31,7 @@ const BookScreen = () => {
     // Fetch books from backend
     const fetchBooks = async () => {
       try {
-        const response = await fetch('http://134.190.225.163:5000/get-books');
+        const response = await fetch(`${config.backendUrl}/get-books`);
         const data = await response.json();
         setBooks(data.books || []);
         if (data.books && data.books.length > 0) {
@@ -50,13 +51,13 @@ const BookScreen = () => {
     
     setChoosing(true);
     try {
-      const response = await fetch('http://134.190.225.163:5000/select-book', {
+      const response = await fetch(`${config.backendUrl}/select-book`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ book_id: selectedBookId }),
-      });
+      });    
       
       if (response.ok) {
         console.log('Book selected successfully');

@@ -4,6 +4,7 @@ import { Card, Title } from 'react-native-paper';
 import * as Animatable from 'react-native-animatable';
 import LottieView from 'lottie-react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import config from '../config';
 
 const ResultsScreen = ({ route }) => {
   const defaultResponseData = {

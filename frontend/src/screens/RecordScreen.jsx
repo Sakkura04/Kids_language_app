@@ -5,6 +5,7 @@ import RNFS from 'react-native-fs';
 import { PermissionsAndroid } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AudioRecorderComponent from '../components/AudioRecorder';
+import config from '../config';
 
 const { width, height } = Dimensions.get('window');
 const MENU_CLOSED_Y = 45;
@@ -91,7 +92,7 @@ const RecordScreen = ({ navigation, route }) => {
 
   // Fetch max fragmentId for the current book
   useEffect(() => {
-    fetch('http://134.190.225.163:5000/get-min-max-fragment-id', {
+    fetch(`${config.backendUrl}/get-min-max-fragment-id`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ book_id: bookId }),
@@ -112,7 +113,7 @@ const RecordScreen = ({ navigation, route }) => {
 
   // Fetch fragment by ID
   useEffect(() => {
-    fetch('http://134.190.225.163:5000/get-reading-text', {
+    fetch(`${config.backendUrl}/get-reading-text`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ fragment_id: fragmentId, book_id: bookId }),
@@ -205,7 +206,7 @@ const RecordScreen = ({ navigation, route }) => {
       }
       const audioBase64 = await RNFS.readFile(recordPath, 'base64');
       // Send audioBase64 and currentParagraph to backend
-      const response = await fetch('http://134.190.225.163:5000/process-recorded-text', {
+      const response = await fetch(`${config.backendUrl}/process-recorded-text`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -215,6 +216,7 @@ const RecordScreen = ({ navigation, route }) => {
           displayed_text: fragment.text,
         }),
       });
+      
       if (response.ok) {
         const data = await response.json();
         Alert.alert('Success', 'Recording sent and processed!');
